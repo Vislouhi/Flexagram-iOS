@@ -16,6 +16,10 @@ import DeviceProximity
 import PhoneNumberFormat
 
 public final class PresentationCallImpl: PresentationCall {
+       
+    
+    
+    
     public let context: AccountContext
     private let audioSession: ManagedAudioSession
     private let callSessionManager: CallSessionManager
@@ -802,6 +806,9 @@ public final class PresentationCallImpl: PresentationCall {
         self.isMutedValue = value
         self.isMutedPromise.set(self.isMutedValue)
         self.ongoingContext?.setIsMuted(self.isMutedValue)
+    }
+    public func setFlexatarCallback(_ value: Bool){
+        self.ongoingContext?.setFlexatarCallback(value)
     }
     
     public func requestVideo() {

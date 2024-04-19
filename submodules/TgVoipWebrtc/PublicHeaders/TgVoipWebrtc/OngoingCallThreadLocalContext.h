@@ -3,6 +3,7 @@
 
 #import <Foundation/Foundation.h>
 
+
 #if TARGET_OS_IOS
 #import <UIKit/UIKit.h>
 #import <CoreMedia/CoreMedia.h>
@@ -194,6 +195,7 @@ typedef NS_ENUM(int32_t, OngoingCallDataSavingWebrtc) {
 
 @end
 
+
 @interface OngoingCallThreadLocalContextVideoCapturer : NSObject
 
 - (instancetype _Nonnull)initWithDeviceId:(NSString * _Nonnull)deviceId keepLandscape:(bool)keepLandscape;
@@ -260,7 +262,8 @@ typedef NS_ENUM(int32_t, OngoingCallDataSavingWebrtc) {
                      preferredVideoCodec:(NSString * _Nullable)preferredVideoCodec
                       audioInputDeviceId:(NSString * _Nonnull)audioInputDeviceId
                              audioDevice:(SharedCallAudioDevice * _Nullable)audioDevice
-                        directConnection:(id<OngoingCallDirectConnection> _Nullable)directConnection;
+                        directConnection:(id<OngoingCallDirectConnection> _Nullable)directConnection
+                   flexatarAudioCallback:(void (^_Nullable)(NSData * _Nonnull))flxAudioCallback;
 
 - (void)setManualAudioSessionIsActive:(bool)isAudioSessionActive;
 
@@ -274,6 +277,7 @@ typedef NS_ENUM(int32_t, OngoingCallDataSavingWebrtc) {
 - (NSData * _Nonnull)getDerivedState;
 
 - (void)setIsMuted:(bool)isMuted;
+- (void)setFlexatarCallback:(bool)value;
 - (void)setIsLowBatteryLevel:(bool)isLowBatteryLevel;
 - (void)setNetworkType:(OngoingCallNetworkTypeWebrtc)networkType;
 - (GroupCallDisposable * _Nonnull)addVideoOutputWithIsIncoming:(bool)isIncoming sink:(void (^_Nonnull)(CallVideoFrameData * _Nonnull))sink;
@@ -396,6 +400,12 @@ typedef NS_ENUM(int32_t, OngoingGroupCallRequestedVideoQuality) {
 
 @end
 
+//@interface FlexatarAudioCallback : NSObject
+//- (instancetype _Nullable )initWithCallback:(std::function<void(float*_Nullable,int)>)callback;
+//- (void) triggerCalback:(float*_Nullable)array size:(int)size;
+//
+//@end
+
 @interface GroupCallThreadLocalContext : NSObject
 
 - (instancetype _Nonnull)initWithQueue:(id<OngoingCallThreadLocalContextQueueWebrtc> _Nonnull)queue
@@ -429,6 +439,7 @@ audioDevice:(SharedCallAudioDevice * _Nullable)audioDevice;
 - (void)removeSsrcs:(NSArray<NSNumber *> * _Nonnull)ssrcs;
 - (void)removeIncomingVideoSource:(uint32_t)ssrc;
 - (void)setIsMuted:(bool)isMuted;
+- (void)setFlexatarCallback:(bool)callback;
 - (void)setIsNoiseSuppressionEnabled:(bool)isNoiseSuppressionEnabled;
 - (void)requestVideo:(OngoingCallThreadLocalContextVideoCapturer * _Nullable)videoCapturer completion:(void (^ _Nonnull)(NSString * _Nonnull, uint32_t))completion;
 - (void)disableVideo:(void (^ _Nonnull)(NSString * _Nonnull, uint32_t))completion;

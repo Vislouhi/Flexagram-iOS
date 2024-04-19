@@ -213,7 +213,7 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
         self.placeholderIconNode.contentMode = .scaleAspectFit
         self.placeholderIconNode.displaysAsynchronously = false
         
-        self.wheelNode = WheelControlNode(items: [WheelControlNode.Item(title: UIDevice.current.model == "iPad" ? self.presentationData.strings.VoiceChat_VideoPreviewTabletScreen : self.presentationData.strings.VoiceChat_VideoPreviewPhoneScreen), WheelControlNode.Item(title: self.presentationData.strings.VoiceChat_VideoPreviewFrontCamera), WheelControlNode.Item(title: self.presentationData.strings.VoiceChat_VideoPreviewBackCamera)], selectedIndex: self.selectedTabIndex)
+        self.wheelNode = WheelControlNode(items: [WheelControlNode.Item(title: UIDevice.current.model == "iPad" ? self.presentationData.strings.VoiceChat_VideoPreviewTabletScreen : self.presentationData.strings.VoiceChat_VideoPreviewPhoneScreen), WheelControlNode.Item(title:self.presentationData.strings.Flexatar_VideoPreviewFlexatar),WheelControlNode.Item(title: self.presentationData.strings.VoiceChat_VideoPreviewFrontCamera), WheelControlNode.Item(title: self.presentationData.strings.VoiceChat_VideoPreviewBackCamera)], selectedIndex: self.selectedTabIndex)
         
         super.init()
         
@@ -247,16 +247,18 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
 
         self.wheelNode.selectedIndexChanged = { [weak self] index in
             if let strongSelf = self {
-                if (index == 1 && strongSelf.selectedTabIndex == 2) || (index == 2 && strongSelf.selectedTabIndex == 1) {
+//                if (index == 1 && strongSelf.selectedTabIndex == 2) || (index == 2 && strongSelf.selectedTabIndex == 1) {
+                if (index == 2 && strongSelf.selectedTabIndex == 3) || (index == 3 && strongSelf.selectedTabIndex == 2) {
                     strongSelf.switchCamera?()
                 }
-                if index == 0 && [1, 2].contains(strongSelf.selectedTabIndex) {
+                
+                if index == 0 && [1, 2, 3].contains(strongSelf.selectedTabIndex) {
                     strongSelf.broadcastPickerView?.isHidden = false
                     strongSelf.cameraNode.updateIsBlurred(isBlurred: true, light: false, animated: true)
                     let transition = ContainedViewLayoutTransition.animated(duration: 0.3, curve: .easeInOut)
                     transition.updateAlpha(node: strongSelf.placeholderTextNode, alpha: 1.0)
                     transition.updateAlpha(node: strongSelf.placeholderIconNode, alpha: 1.0)
-                } else if [1, 2].contains(index) && strongSelf.selectedTabIndex == 0 {
+                } else if [1, 2, 3].contains(index) && strongSelf.selectedTabIndex == 0 {
                     strongSelf.broadcastPickerView?.isHidden = true
                     strongSelf.cameraNode.updateIsBlurred(isBlurred: false, light: false, animated: true)
                     let transition = ContainedViewLayoutTransition.animated(duration: 0.3, curve: .easeInOut)
@@ -310,7 +312,7 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
     }
     
     @objc func leftSwipeGesture() {
-        if self.selectedTabIndex < 2 {
+        if self.selectedTabIndex < 3 {
             self.wheelNode.setSelectedIndex(self.selectedTabIndex + 1, animated: true)
             self.wheelNode.selectedIndexChanged(self.wheelNode.selectedIndex)
         }

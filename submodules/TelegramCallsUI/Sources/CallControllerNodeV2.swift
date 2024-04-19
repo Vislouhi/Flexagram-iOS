@@ -295,6 +295,7 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
                         guard let self else {
                             return
                         }
+                        print("FLX_INJECT video preview continue pressed")
                         /*switch callState.videoState {
                         case .inactive:
                             self.isRequestingVideo = true
@@ -302,6 +303,7 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
                         default:
                             break
                         }*/
+                        self.call.setFlexatarCallback(true)
                         self.call.requestVideo()
                     }
                     

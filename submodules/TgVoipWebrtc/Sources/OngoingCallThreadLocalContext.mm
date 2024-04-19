@@ -621,6 +621,8 @@ private:
 
 @end
 
+
+
 @implementation OngoingCallThreadLocalContextVideoCapturer
 
 - (instancetype _Nonnull)initWithInterface:(std::shared_ptr<tgcalls::VideoCaptureInterface>)interface {
@@ -814,6 +816,32 @@ tgcalls::VideoCaptureInterfaceObject *GetVideoCaptureAssumingSameThread(tgcalls:
 
 @end
 
+// -----FLX_INJECT BEGIN-----
+//@interface FlexatarAudioCallback ()
+//@property (nonatomic,assign) std::function<void(float*_Nullable,int)> callback;
+//
+//@end
+//
+//@implementation FlexatarAudioCallback
+//
+//- (instancetype _Nullable)initWithCallback:(std::function<void (float * _Nullable, int)>)callback {
+//    self = [super init];
+//    if (self) {
+//        self.callback = callback;
+//    }
+//    return self;
+//}
+//
+//
+//
+//- (void)triggerCalback:(float * _Nullable)array size:(int)size {
+//    if (self.callback){
+//        self.callback(array,size);
+//    }
+//}
+//
+//@end
+// -----FLX_INJECT END-----
 @implementation OngoingCallThreadLocalContextWebrtcTerminationResult
 
 - (instancetype)initWithFinalState:(tgcalls::FinalState)finalState {
@@ -830,6 +858,9 @@ tgcalls::VideoCaptureInterfaceObject *GetVideoCaptureAssumingSameThread(tgcalls:
     NSString *_version;
     id<OngoingCallThreadLocalContextQueueWebrtc> _queue;
     int32_t _contextId;
+//    @property (nonatomic,assign) void (^)(bool);
+//    void (void (^_Nullable)(bool)) _flxAudioCallback;
+    void (^_flxAudioCallback)(NSData * _Nonnull);
     
     bool _useManualAudioSessionControl;
     SharedCallAudioDevice *_audioDevice;
@@ -1013,11 +1044,13 @@ static void (*InternalVoipLoggingFunction)(NSString *) = NULL;
                      preferredVideoCodec:(NSString * _Nullable)preferredVideoCodec
                       audioInputDeviceId:(NSString * _Nonnull)audioInputDeviceId
                              audioDevice:(SharedCallAudioDevice * _Nullable)audioDevice
-                        directConnection:(id<OngoingCallDirectConnection> _Nullable)directConnection {
+                        directConnection:(id<OngoingCallDirectConnection> _Nullable)directConnection 
+                        flexatarAudioCallback:(void (^_Nullable)(NSData * _Nonnull))flxAudioCallback;{
     self = [super init];
     if (self != nil) {
         _version = version;
         _queue = queue;
+        _flxAudioCallback = flxAudioCallback;
         assert([queue isCurrent]);
         
         assert([[OngoingCallThreadLocalContextWebrtc versionsWithIncludeReference:true] containsObject:version]);
@@ -1495,6 +1528,19 @@ static void (*InternalVoipLoggingFunction)(NSString *) = NULL;
 - (void)setIsMuted:(bool)isMuted {
     if (_tgVoip) {
         _tgVoip->setMuteMicrophone(isMuted);
+    }
+}
+
+
+- (void)setFlexatarCallback:(bool)callback {
+    if (_tgVoip) {
+        std::function<void(const int16_t*_Nullable,int)> cb;
+        cb = [self](const int16_t* audioBuffer,int len){
+            printf("FLX_INJECT flexatar callback");
+            NSData *data = [NSData dataWithBytes:audioBuffer length:len * sizeof(int16_t)];
+            _flxAudioCallback(data);
+        };
+        _tgVoip->setFlexatarCallback(cb);
     }
 }
 

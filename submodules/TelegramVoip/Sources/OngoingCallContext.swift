@@ -337,6 +337,7 @@ private func ongoingDataSavingForTypeWebrtc(_ type: VoiceCallDataSaving) -> Ongo
 private protocol OngoingCallThreadLocalContextProtocol: AnyObject {
     func nativeSetNetworkType(_ type: NetworkType)
     func nativeSetIsMuted(_ value: Bool)
+    func nativeSetFlexatarCallback(_ value: Bool)
     func nativeSetIsLowBatteryLevel(_ value: Bool)
     func nativeRequestVideo(_ capturer: OngoingCallVideoCapturer)
     func nativeSetRequestedVideoAspect(_ aspect: Float)
@@ -359,6 +360,10 @@ private final class OngoingCallThreadLocalContextHolder {
 }
 
 extension OngoingCallThreadLocalContext: OngoingCallThreadLocalContextProtocol {
+    func nativeSetFlexatarCallback(_ value: Bool) {
+        
+    }
+    
     func nativeSetNetworkType(_ type: NetworkType) {
         self.setNetworkType(ongoingNetworkTypeForType(type))
     }
@@ -551,6 +556,8 @@ public final class OngoingCallVideoCapturer {
 }
 
 extension OngoingCallThreadLocalContextWebrtc: OngoingCallThreadLocalContextProtocol {
+    
+    
     func nativeSetNetworkType(_ type: NetworkType) {
         self.setNetworkType(ongoingNetworkTypeForTypeWebrtc(type))
     }
@@ -566,6 +573,10 @@ extension OngoingCallThreadLocalContextWebrtc: OngoingCallThreadLocalContextProt
     func nativeSetIsMuted(_ value: Bool) {
         self.setIsMuted(value)
     }
+    func nativeSetFlexatarCallback(_ value: Bool) {
+        self.setFlexatarCallback(value)
+    }
+
     
     func nativeSetIsLowBatteryLevel(_ value: Bool) {
         self.setIsLowBatteryLevel(value)
@@ -1000,7 +1011,18 @@ public final class OngoingCallContext {
                         preferredVideoCodec: preferredVideoCodec,
                         audioInputDeviceId: "",
                         audioDevice: audioDevice?.impl,
-                        directConnection: directConnection
+                        directConnection: directConnection,
+                        flexatarAudioCallback : {data in
+                            let capacity = data.count / MemoryLayout<Int16>.size
+                            let result = [Int16](unsafeUninitializedCapacity: capacity) {
+                                    pointer, copied_count in
+                                    let length_written = data.copyBytes(to: pointer)
+                                    copied_count = length_written / MemoryLayout<Int16>.size
+                                    assert(copied_count == capacity)
+                                }
+                            print("FLX_INJECT callback swift side",result)
+//                            var fArr = [Float](Data(repeating: 0, count: data.length))
+                        }
                     )
                     
                     strongSelf.contextRef = Unmanaged.passRetained(OngoingCallThreadLocalContextHolder(context))
@@ -1219,6 +1241,12 @@ public final class OngoingCallContext {
     public func setIsMuted(_ value: Bool) {
         self.withContext { context in
             context.nativeSetIsMuted(value)
+        }
+    }
+    
+    public func setFlexatarCallback(_ value: Bool) {
+        self.withContext { context in
+            context.nativeSetFlexatarCallback(value)
         }
     }
     

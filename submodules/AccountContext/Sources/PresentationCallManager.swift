@@ -156,6 +156,7 @@ public protocol PresentationCall: AnyObject {
     func toggleIsMuted()
     func setIsMuted(_ value: Bool)
     func requestVideo()
+    func setFlexatarCallback(_ value: Bool)
     func setRequestedVideoAspect(_ aspect: Float)
     func disableVideo()
     func setOutgoingVideoIsPaused(_ isPaused: Bool)
