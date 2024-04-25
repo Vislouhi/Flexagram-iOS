@@ -18,6 +18,7 @@ import TelegramVoip
 import MetalEngine
 import DeviceAccess
 import LibYuvBinding
+import Flexatar
 
 final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeProtocol {
     private struct PanGestureState {
@@ -278,7 +279,11 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
                 if isScreencast {
                     (self.call as? PresentationCallImpl)?.disableScreencast()
                 } else {
+                    FrameProvider.invalidateFlexatarDrawTimer()
+                    self.call.setFlexatarCallback(false)
                     self.call.disableVideo()
+                    
+                    
                 }
             default:
                 DeviceAccess.authorizeAccess(to: .camera(.videoCall), onlyCheck: true, presentationData: self.presentationData, present: { [weak self] c, a in
@@ -303,7 +308,7 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
                         default:
                             break
                         }*/
-                        self.call.setFlexatarCallback(true)
+                        self.call.setFlexatarCallbackAuto()
                         self.call.requestVideo()
                     }
                     
@@ -338,11 +343,28 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
                             let controller = VoiceChatCameraPreviewController(sharedContext: self.sharedContext, cameraNode: outgoingVideoNode, shareCamera: { _, _ in
                                 proceed()
                             }, switchCamera: { [weak self] in
+                                print("FLX_INJECT back camera")
                                 Queue.mainQueue().after(0.1) {
-                                    self?.call.switchVideoCamera()
+                                    self?.call.switchBackCamera()
                                 }
+                            },displayFlexatar: {
+                                
+                                [weak self] in
+                                Queue.mainQueue().after(0.1) {
+                                    self?.call.switchFlexatarCamera()
+                                }
+                                print("FLX_INJECT Flexatar camera")
+                            },switchFrontCamera: {
+                                [weak self] in
+                                Queue.mainQueue().after(0.1) {
+                                    self?.call.switchFrontCamera()
+                                }
+                                print("FLX_INJECT Front camera")
+                            },stopFlexatar: {
+                                FrameProvider.invalidateFlexatarDrawTimer()
                             })
                             self.present?(controller)
+                            
                             
                             updateLayoutImpl = { [weak controller] layout, navigationBarHeight in
                                 controller?.containerLayoutUpdated(layout, transition: .immediate)
@@ -450,7 +472,7 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
             
             mappedLifecycleState = .terminated(PrivateCallScreen.State.TerminatedState(duration: duration, reason: mappedReason))
         }
-        
+//        print("FLX_INJECT chamge call state")
         switch callState.state {
         case .terminating, .terminated:
             self.localVideo = nil
@@ -458,10 +480,13 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
         default:
             switch callState.videoState {
             case .active(let isScreencast), .paused(let isScreencast):
+//                print("FLX_INJECT video state active")
                 if isScreencast {
                     self.localVideo = nil
                 } else {
+//                    print("FLX_INJECT not screen cast")
                     if self.localVideo == nil, let call = self.call as? PresentationCallImpl, let videoStreamSignal = call.video(isIncoming: false) {
+//                        print("FLX_INJECT setting local video")
                         self.localVideo = AdaptedCallVideoSource(videoStreamSignal: videoStreamSignal)
                     }
                 }

@@ -16,6 +16,7 @@ import AccountContext
 import DeviceProximity
 import UndoUI
 import TemporaryCachedPeerDataManager
+import Flexatar
 
 private extension GroupCallParticipantsContext.Participant {
     var allSsrcs: Set<UInt32> {
@@ -339,6 +340,14 @@ private extension CurrentImpl {
         switch self {
         case let .call(callContext):
             callContext.stop()
+        case .mediaStream:
+            break
+        }
+    }
+    func setFlexatarCallback(_ callback:Bool){
+        switch self {
+        case let .call(callContext):
+            callContext.setFlexatarCallback(callback)
         case .mediaStream:
             break
         }
@@ -1124,6 +1133,7 @@ public final class PresentationGroupCallImpl: PresentationGroupCall {
             guard let screencastCapturer = screencastCapturer else {
                 return
             }
+                      
             screencastCapturer.injectPixelBuffer(screencastFrame.0, rotation: screencastFrame.1)
         })
         self.screencastAudioDataDisposable = (screencastBufferServerContext.audioData
@@ -2604,6 +2614,7 @@ public final class PresentationGroupCallImpl: PresentationGroupCall {
     }
     
     public func leave(terminateIfPossible: Bool) -> Signal<Bool, NoError> {
+        FrameProvider.invalidateFlexatarDrawTimer()
         self.leaving = true
         if let callInfo = self.internalState.callInfo {
             if terminateIfPossible {
@@ -2642,7 +2653,9 @@ public final class PresentationGroupCallImpl: PresentationGroupCall {
             self.setIsMuted(action: .muted(isPushToTalkActive: false))
         }
     }
-    
+    public func setFlexatarCallback(_ callback:Bool){
+        self.genericCallContext?.setFlexatarCallback(callback)
+    }
     public func setIsMuted(action: PresentationGroupCallMuteAction) {
         if self.isMutedValue == action {
             return
@@ -2958,6 +2971,10 @@ public final class PresentationGroupCallImpl: PresentationGroupCall {
     public func switchVideoCamera() {
         self.useFrontCamera = !self.useFrontCamera
         self.videoCapturer?.switchVideoInput(isFront: self.useFrontCamera)
+    }
+    public func switchFlexatarCamera(isFlexatar: Bool,isFront: Bool) {
+       
+        self.videoCapturer?.switchFlexatarInput(isFlexatar: isFlexatar,isFront: isFront)
     }
 
     private func requestScreencast() {

@@ -32,6 +32,7 @@ import MapResourceToAvatarSizes
 import SolidRoundedButtonNode
 import AudioBlob
 import DeviceAccess
+import Flexatar
 
 let panelBackgroundColor = UIColor(rgb: 0x1c1c1e)
 let secondaryPanelBackgroundColor = UIColor(rgb: 0x2c2c2e)
@@ -869,6 +870,8 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
         private var currentLoadToken: String?
         
         private var scrollAtTop = true
+        private var isFlexatarCamera = true
+        private var isFrontCamera = true
         
         private var effectiveMuteState: GroupCallParticipantsContext.Participant.MuteState? {
             if self.pushingToTalk {
@@ -3257,7 +3260,7 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
                     guard let strongSelf = self else {
                         return
                     }
-
+                    
                     strongSelf.leaveDisposable.set((strongSelf.call.leave(terminateIfPossible: true)
                     |> deliverOnMainQueue).start(completed: {
                         self?.controller?.dismiss()
@@ -3699,6 +3702,7 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
         @objc private func cameraPressed() {
             self.hapticFeedback.impact(.light)
             if self.call.hasVideo {
+                FrameProvider.invalidateFlexatarDrawTimer()
                 self.call.disableVideo()
                 
                 if let (layout, navigationHeight) = self.validLayout {
@@ -3714,7 +3718,7 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
                     guard let strongSelf = self, ready else {
                         return
                     }
-                    var isFrontCamera = true
+                    let isFrontCamera = true
                     let videoCapturer = OngoingCallVideoCapturer()
                     let input = videoCapturer.video()
                     if let videoView = strongSelf.videoRenderingContext.makeView(input: input, blur: false) {
@@ -3724,6 +3728,9 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
                         let controller = VoiceChatCameraPreviewController(sharedContext: strongSelf.context.sharedContext, cameraNode: cameraNode, shareCamera: { [weak self] _, unmuted in
                             if let strongSelf = self {
                                 strongSelf.call.setIsMuted(action: unmuted ? .unmuted : .muted(isPushToTalkActive: false))
+                                
+                                strongSelf.call.setFlexatarCallback(strongSelf.isFlexatarCamera)
+                                
                                 (strongSelf.call as! PresentationGroupCallImpl).requestVideo(capturer: videoCapturer, useFrontCamera: isFrontCamera)
 
                                 if let (layout, navigationHeight) = strongSelf.validLayout {
@@ -3732,10 +3739,29 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
                                 }
                             }
                         }, switchCamera: {
+//                            Queue.mainQueue().after(0.1) {
+//                                isFrontCamera = !isFrontCamera
+//                                videoCapturer.switchVideoInput(isFront: isFrontCamera)
+//                            }
+                            strongSelf.isFlexatarCamera = false
+                            strongSelf.isFrontCamera = false
                             Queue.mainQueue().after(0.1) {
-                                isFrontCamera = !isFrontCamera
-                                videoCapturer.switchVideoInput(isFront: isFrontCamera)
+                                videoCapturer.switchFlexatarInput(isFlexatar: false, isFront: false)
                             }
+                        },displayFlexatar: {
+                            strongSelf.isFlexatarCamera = true
+                            strongSelf.isFrontCamera = false
+                            Queue.mainQueue().after(0.1) {
+                                videoCapturer.switchFlexatarInput(isFlexatar: true, isFront: false)
+                            }
+                        },switchFrontCamera: {
+                            strongSelf.isFrontCamera = true
+                            strongSelf.isFlexatarCamera = false
+                            Queue.mainQueue().after(0.1) {
+                                videoCapturer.switchFlexatarInput(isFlexatar: false, isFront: true)
+                            }
+                        },stopFlexatar:{
+                            FrameProvider.invalidateFlexatarDrawTimer()
                         })
                         strongSelf.controller?.present(controller, in: .window(.root))
                     }
@@ -3745,8 +3771,25 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
         
         @objc private func switchCameraPressed() {
             self.hapticFeedback.impact(.light)
+            if self.isFlexatarCamera {
+                print("FLX_INJECT switch from Flexatar cam")
+                self.isFlexatarCamera = false
+                self.isFrontCamera = true
+            }else if self.isFrontCamera{
+                print("FLX_INJECT switch from Front cam")
+                self.isFlexatarCamera = false
+                self.isFlexatarCamera = false
+                self.isFrontCamera = false
+            }else{
+                print("FLX_INJECT switch from Back cam")
+                self.isFlexatarCamera = true
+                self.isFrontCamera = false
+            }
+            self.call.setFlexatarCallback(self.isFlexatarCamera)
             Queue.mainQueue().after(0.1) {
-                self.call.switchVideoCamera()
+//                self.call.switchVideoCamera()
+                self.call.switchFlexatarCamera(isFlexatar: self.isFlexatarCamera, isFront: self.isFrontCamera)
+                
             }
             
             if let callState = self.callState {

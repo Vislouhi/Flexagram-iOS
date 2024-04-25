@@ -2,7 +2,7 @@ import Foundation
 import SwiftSignalKit
 import TgVoipWebrtc
 import TelegramCore
-
+import Flexatar
 final class ContextQueueImpl: NSObject, OngoingCallThreadLocalContextQueueWebrtc {
     private let queue: Queue
     
@@ -576,7 +576,11 @@ public final class OngoingGroupCallContext {
                 disableAudioInput: disableAudioInput,
                 preferX264: preferX264,
                 logPath: logPath,
-                audioDevice: audioDevice
+                audioDevice: audioDevice,
+                flexatarAudioCallback : {data in
+                    SoundProcessing.makeAnimVector(data)
+//
+                }
             )
 #else
             self.context = GroupCallThreadLocalContext(
@@ -839,7 +843,9 @@ public final class OngoingGroupCallContext {
             self.isMuted.set(isMuted)
             self.context.setIsMuted(isMuted)
         }
-
+        public func setFlexatarCallback(_ callback: Bool){
+            self.context.setFlexatarCallback(callback)
+        }
         func setIsNoiseSuppressionEnabled(_ isNoiseSuppressionEnabled: Bool) {
             self.isNoiseSuppressionEnabled.set(isNoiseSuppressionEnabled)
             self.context.setIsNoiseSuppressionEnabled(isNoiseSuppressionEnabled)
@@ -1128,6 +1134,11 @@ public final class OngoingGroupCallContext {
         }
     }
 
+    public func setFlexatarCallback(_ callback: Bool) {
+        self.impl.with { impl in
+            impl.setFlexatarCallback(callback)
+        }
+    }
     public func setIsNoiseSuppressionEnabled(_ isNoiseSuppressionEnabled: Bool) {
         self.impl.with { impl in
             impl.setIsNoiseSuppressionEnabled(isNoiseSuppressionEnabled)

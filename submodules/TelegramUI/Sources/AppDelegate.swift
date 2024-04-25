@@ -42,6 +42,7 @@ import MediaEditor
 import TelegramUIDeclareEncodables
 import ContextMenuScreen
 import MetalEngine
+import Flexatar
 
 #if canImport(AppCenter)
 import AppCenter
@@ -1531,6 +1532,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         })
         
         //self.addBackgroundDownloadTask()
+        DispatchQueue(label: "org.flexatar.loadAnimNN").async{
+            AnimationNN.prepare()
+        }
         
         return true
     }

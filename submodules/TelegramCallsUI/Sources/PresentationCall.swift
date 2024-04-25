@@ -14,6 +14,7 @@ import UniversalMediaPlayer
 import AccountContext
 import DeviceProximity
 import PhoneNumberFormat
+import Flexatar
 
 public final class PresentationCallImpl: PresentationCall {
        
@@ -120,6 +121,7 @@ public final class PresentationCallImpl: PresentationCall {
     private var dropCallKitCallTimer: SwiftSignalKit.Timer?
     
     private var useFrontCamera: Bool = true
+    private var useFlexatarCamera: Bool = true
     private var videoCapturer: OngoingCallVideoCapturer?
 
     private var screencastBufferServerContext: IpcGroupCallBufferAppContext?
@@ -810,7 +812,15 @@ public final class PresentationCallImpl: PresentationCall {
     public func setFlexatarCallback(_ value: Bool){
         self.ongoingContext?.setFlexatarCallback(value)
     }
-    
+    public func setFlexatarCallbackAuto(){
+        self.ongoingContext?.setFlexatarCallback(self.useFlexatarCamera)
+    }
+    public func startFlexatarTimer(){
+        if let videoCapturer = self.videoCapturer {
+            videoCapturer.startFlexatarTimer()
+        }
+//        self.ongoingContext?.startFlexatarTimer()
+    }
     public func requestVideo() {
         if self.videoCapturer == nil {
             let videoCapturer = OngoingCallVideoCapturer()
@@ -1001,6 +1011,10 @@ public final class PresentationCallImpl: PresentationCall {
         if self.videoCapturer == nil {
             let videoCapturer = OngoingCallVideoCapturer()
             self.videoCapturer = videoCapturer
+            
+        }else{
+            self.videoCapturer?.switchFlexatarInput(isFlexatar: true, isFront: true)
+            startFlexatarTimer()
         }
         
         self.videoCapturer?.makeOutgoingVideoView(requestClone: false, completion: { view, _ in
@@ -1072,7 +1086,39 @@ public final class PresentationCallImpl: PresentationCall {
     }
     
     public func switchVideoCamera() {
-        self.useFrontCamera = !self.useFrontCamera
-        self.videoCapturer?.switchVideoInput(isFront: self.useFrontCamera)
+        if self.useFlexatarCamera {
+            print("FLX_INJECT switch from Flexatar cam")
+            self.useFlexatarCamera = false
+            self.useFrontCamera = true
+        }else if self.useFrontCamera{
+            print("FLX_INJECT switch from Front cam")
+            self.useFlexatarCamera = false
+            self.useFlexatarCamera = false
+            self.useFrontCamera = false
+        }else{
+            print("FLX_INJECT switch from Back cam")
+            self.useFlexatarCamera = true
+        }
+        self.videoCapturer?.switchFlexatarInput(isFlexatar: self.useFlexatarCamera,isFront: self.useFrontCamera)
+        self.ongoingContext?.setFlexatarCallback(self.useFlexatarCamera)
+//        self.videoCapturer?.switchVideoInput(isFront: self.useFrontCamera)
+    }
+    
+    public func switchFlexatarCamera() {
+        self.useFlexatarCamera = true
+
+        self.videoCapturer?.switchFlexatarInput(isFlexatar: true,isFront: true)
+    }
+    
+    public func switchFrontCamera() {
+        self.useFlexatarCamera = false
+        self.useFrontCamera = true
+        self.videoCapturer?.switchFlexatarInput(isFlexatar: false,isFront: true)
+       
+    }
+    public func switchBackCamera() {
+        self.useFlexatarCamera = false
+        self.useFrontCamera = false
+        self.videoCapturer?.switchFlexatarInput(isFlexatar: false,isFront: false)
     }
 }

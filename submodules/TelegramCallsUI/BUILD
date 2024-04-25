@@ -110,6 +110,7 @@ swift_library(
         "//submodules/TinyThumbnail",
         "//submodules/ImageBlur",
         "//submodules/MetalEngine",
+        "//submodules/Flexatar:Flexatar",
     ],
     visibility = [
         "//visibility:public",

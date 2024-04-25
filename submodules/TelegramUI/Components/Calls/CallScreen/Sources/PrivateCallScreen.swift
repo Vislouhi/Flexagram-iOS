@@ -95,6 +95,7 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
             isRemoteBatteryLow: Bool,
             isEnergySavingEnabled: Bool
         ) {
+            
             self.strings = strings
             self.lifecycleState = lifecycleState
             self.name = name
@@ -511,11 +512,14 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
                 self.activeRemoteVideoSource = nil
             }
         }
+//        print("FLX_INJECT loacal video view",self.params?.state.localVideo ?? "none")
         if self.params?.state.localVideo !== params.state.localVideo {
             self.waitingForFirstLocalVideoFrameDisposable?.dispose()
             
             if let localVideo = params.state.localVideo {
+//                self.activeLocalVideoSource = localVideo
                 if localVideo.currentOutput != nil {
+//                    print("FLX_INJECT set self.activeLocalVideoSource 1")
                     self.activeLocalVideoSource = localVideo
                 } else {
                     let firstVideoFrameSignal = Signal<Never, NoError> { subscriber in
@@ -535,6 +539,7 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
                         guard let self else {
                             return
                         }
+//                        print("FLX_INJECT set self.activeLocalVideoSource 2")
                         self.activeLocalVideoSource = localVideo
                         if shouldUpdate {
                             self.update(transition: .spring(duration: 0.3))
@@ -605,7 +610,7 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
         } else {
             wideContentWidth = 400.0
         }
-        
+//        print("FLX_INJECT activeLocalVideoSource ",activeLocalVideoSource ?? "none")
         var activeVideoSources: [(VideoContainerView.Key, VideoSource)] = []
         if self.swapLocalAndRemoteVideo {
             if let activeLocalVideoSource = self.activeLocalVideoSource {
@@ -622,6 +627,7 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
                 activeVideoSources.append((.foreground, activeLocalVideoSource))
             }
         }
+       
         let havePrimaryVideo = !activeVideoSources.isEmpty
         
         if havePrimaryVideo && self.hideControlsTimer == nil {
@@ -736,6 +742,7 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
                 self.endCallAction?()
             })
         ]
+//        print("FLX_INJECT activeLocalVideoSource ",activeLocalVideoSource ?? "none")
         if self.activeLocalVideoSource != nil {
             buttons.insert(ButtonGroupView.Button(content: .flipCamera, isEnabled: !isTerminated, action: { [weak self] in
                 guard let self else {

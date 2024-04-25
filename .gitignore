@@ -65,3 +65,6 @@ xcodeproj.bazelrc
 build-input/*
 **/*.pyc
 *.pyc
+Telegram/Telegram-iOS/Resources/wav_to_mel_good.mlm
+Telegram/Telegram-iOS/Resources/wmel_to_phoneme.mlm
+Telegram/Telegram-iOS/Resources/wphoneme_to_avec.mlm

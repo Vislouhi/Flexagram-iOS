@@ -669,7 +669,9 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                                     Queue.mainQueue().after(0.1) {
                                         self?.call.switchVideoCamera()
                                     }
-                                })
+                                },displayFlexatar: {
+
+                                },switchFrontCamera: {},stopFlexatar: {})
                                 strongSelf.present?(controller)
                                 
                                 updateLayoutImpl = { [weak controller] layout, navigationBarHeight in

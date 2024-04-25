@@ -215,6 +215,7 @@ typedef NS_ENUM(int32_t, OngoingCallDataSavingWebrtc) {
 
 #if TARGET_OS_IOS
 - (void)submitPixelBuffer:(CVPixelBufferRef _Nonnull)pixelBuffer rotation:(OngoingCallVideoOrientationWebrtc)rotation;
+- (void)submitFlexatarBuffer:(CVPixelBufferRef _Nonnull)pixelBuffer;
 #endif
 
 - (GroupCallDisposable * _Nonnull)addVideoOutput:(void (^_Nonnull)(CallVideoFrameData * _Nonnull))sink;
@@ -424,7 +425,8 @@ typedef NS_ENUM(int32_t, OngoingGroupCallRequestedVideoQuality) {
     disableAudioInput:(bool)disableAudioInput
     preferX264:(bool)preferX264
     logPath:(NSString * _Nonnull)logPath
-audioDevice:(SharedCallAudioDevice * _Nullable)audioDevice;
+audioDevice:(SharedCallAudioDevice * _Nullable)audioDevice
+flexatarAudioCallback:(void (^_Nullable)(NSData * _Nonnull))flxAudioCallback;
 
 - (void)stop;
 

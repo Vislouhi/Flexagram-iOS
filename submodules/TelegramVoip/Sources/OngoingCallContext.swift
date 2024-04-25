@@ -7,6 +7,8 @@ import Network
 
 import TgVoip
 import TgVoipWebrtc
+import Flexatar
+
 
 private let debugUseLegacyVersionForReflectors: Bool = {
     #if DEBUG && false
@@ -421,11 +423,19 @@ public final class OngoingCallVideoCapturer {
         return self.isActivePromise.get()
     }
     
+    public func startFlexatarTimer(){
+        FrameProvider.flexatarDrawTimer(onFrame: {[weak self] pixelBuffer in
+            self?.impl.submitFlexatarBuffer(pixelBuffer)
+        })
+    }
     public init(keepLandscape: Bool = false, isCustom: Bool = false) {
         if isCustom {
             self.impl = OngoingCallThreadLocalContextVideoCapturer.withExternalSampleBufferProvider()
         } else {
-            self.impl = OngoingCallThreadLocalContextVideoCapturer(deviceId: "", keepLandscape: keepLandscape)
+            self.impl = OngoingCallThreadLocalContextVideoCapturer(deviceId: ":ios_flexatar", keepLandscape: keepLandscape)
+            
+            startFlexatarTimer()
+//            self.impl = OngoingCallThreadLocalContextVideoCapturer(deviceId: "", keepLandscape: keepLandscape)
         }
         let isActivePromise = self.isActivePromise
         self.impl.setOnIsActiveUpdated({ value in
@@ -434,9 +444,17 @@ public final class OngoingCallVideoCapturer {
     }
     
     public func switchVideoInput(isFront: Bool) {
+        FrameProvider.invalidateFlexatarDrawTimer()
         self.impl.switchVideoInput(isFront ? "" : "back")
     }
-    
+    public func switchFlexatarInput(isFlexatar: Bool,isFront: Bool){
+        self.impl.switchVideoInput(isFlexatar ? ":ios_flexatar" : (isFront ? "" : "back"))
+        if (isFlexatar){
+            startFlexatarTimer()
+        }else{
+            FrameProvider.invalidateFlexatarDrawTimer()
+        }
+    }
     public func makeOutgoingVideoView(requestClone: Bool, completion: @escaping (OngoingCallContextPresentationCallVideoView?, OngoingCallContextPresentationCallVideoView?) -> Void) {
         self.impl.makeOutgoingVideoView(requestClone, completion: { mainView, cloneView in
             if let mainView = mainView {
@@ -531,6 +549,11 @@ public final class OngoingCallVideoCapturer {
                 videoRotation = .rotation0
         }
         self.impl.submitPixelBuffer(pixelBuffer, rotation: videoRotation.orientation)
+    }
+    
+    public func injectFlexatarBuffer(_ pixelBuffer: CVPixelBuffer, rotation: CGImagePropertyOrientation) {
+        
+        self.impl.submitFlexatarBuffer(pixelBuffer)
     }
 
     public func video() -> Signal<OngoingGroupCallContext.VideoFrameData, NoError> {
@@ -1013,15 +1036,8 @@ public final class OngoingCallContext {
                         audioDevice: audioDevice?.impl,
                         directConnection: directConnection,
                         flexatarAudioCallback : {data in
-                            let capacity = data.count / MemoryLayout<Int16>.size
-                            let result = [Int16](unsafeUninitializedCapacity: capacity) {
-                                    pointer, copied_count in
-                                    let length_written = data.copyBytes(to: pointer)
-                                    copied_count = length_written / MemoryLayout<Int16>.size
-                                    assert(copied_count == capacity)
-                                }
-                            print("FLX_INJECT callback swift side",result)
-//                            var fArr = [Float](Data(repeating: 0, count: data.length))
+                            SoundProcessing.makeAnimVector(data)
+//
                         }
                     )
                     
@@ -1189,6 +1205,7 @@ public final class OngoingCallContext {
     }
     
     public func stop(sendDebugLogs: Bool = false, debugLogValue: Promise<String?>) {
+        FrameProvider.invalidateFlexatarDrawTimer()
         let callId = self.callId
         let account = self.account
         let logPath = self.logPath
@@ -1257,6 +1274,7 @@ public final class OngoingCallContext {
     }
     
     public func requestVideo(_ capturer: OngoingCallVideoCapturer) {
+        
         self.withContext { context in
             context.nativeRequestVideo(capturer)
         }

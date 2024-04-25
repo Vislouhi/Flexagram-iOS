@@ -157,10 +157,15 @@ public protocol PresentationCall: AnyObject {
     func setIsMuted(_ value: Bool)
     func requestVideo()
     func setFlexatarCallback(_ value: Bool)
+    func setFlexatarCallbackAuto()
+    func startFlexatarTimer()
     func setRequestedVideoAspect(_ aspect: Float)
     func disableVideo()
     func setOutgoingVideoIsPaused(_ isPaused: Bool)
     func switchVideoCamera()
+    func switchFlexatarCamera()
+    func switchFrontCamera()
+    func switchBackCamera()
     func setCurrentAudioOutput(_ output: AudioSessionOutput)
     func debugInfo() -> Signal<(String, String), NoError>
     
@@ -430,6 +435,7 @@ public protocol PresentationGroupCall: AnyObject {
     
     func toggleIsMuted()
     func setIsMuted(action: PresentationGroupCallMuteAction)
+    func setFlexatarCallback(_ callback:Bool)
     func setIsNoiseSuppressionEnabled(_ isNoiseSuppressionEnabled: Bool)
     func raiseHand()
     func lowerHand()
@@ -437,6 +443,7 @@ public protocol PresentationGroupCall: AnyObject {
     func disableVideo()
     func disableScreencast()
     func switchVideoCamera()
+    func switchFlexatarCamera(isFlexatar: Bool,isFront: Bool)
     func updateDefaultParticipantsAreMuted(isMuted: Bool)
     func setVolume(peerId: EnginePeer.Id, volume: Int32, sync: Bool)
     func setRequestedVideoList(items: [PresentationGroupCallRequestedVideo])

@@ -694,7 +694,7 @@ tgcalls::VideoCaptureInterfaceObject *GetVideoCaptureAssumingSameThread(tgcalls:
         return;
     }
     _isProcessingCustomSampleBuffer.value = true;
-
+    
     tgcalls::StaticThreads::getThreads()->getMediaThread()->PostTask([interface = _interface, pixelBuffer = CFRetain(pixelBuffer), croppingBuffer = _croppingBuffer, videoRotation = videoRotation, isProcessingCustomSampleBuffer = _isProcessingCustomSampleBuffer]() {
         auto capture = GetVideoCaptureAssumingSameThread(interface.get());
         auto source = capture->source();
@@ -705,7 +705,21 @@ tgcalls::VideoCaptureInterfaceObject *GetVideoCaptureAssumingSameThread(tgcalls:
         isProcessingCustomSampleBuffer.value = false;
     });
 }
+- (void)submitFlexatarBuffer:(CVPixelBufferRef _Nonnull)pixelBuffer  {
+    if (!pixelBuffer) {
+        return;
+    }
 
+    tgcalls::StaticThreads::getThreads()->getMediaThread()->PostTask([interface = _interface, pixelBuffer = CFRetain(pixelBuffer)]() {
+        auto capture = GetVideoCaptureAssumingSameThread(interface.get());
+        auto source = capture->source();
+        if (source) {
+            [VideoCameraCapturer passFlexatarBuffer:(CVPixelBufferRef)pixelBuffer ];
+        }
+//        CFRelease(pixelBuffer);
+       
+    });
+}
 #endif
 
 - (GroupCallDisposable * _Nonnull)addVideoOutput:(void (^_Nonnull)(CallVideoFrameData * _Nonnull))sink {
@@ -816,32 +830,7 @@ tgcalls::VideoCaptureInterfaceObject *GetVideoCaptureAssumingSameThread(tgcalls:
 
 @end
 
-// -----FLX_INJECT BEGIN-----
-//@interface FlexatarAudioCallback ()
-//@property (nonatomic,assign) std::function<void(float*_Nullable,int)> callback;
-//
-//@end
-//
-//@implementation FlexatarAudioCallback
-//
-//- (instancetype _Nullable)initWithCallback:(std::function<void (float * _Nullable, int)>)callback {
-//    self = [super init];
-//    if (self) {
-//        self.callback = callback;
-//    }
-//    return self;
-//}
-//
-//
-//
-//- (void)triggerCalback:(float * _Nullable)array size:(int)size {
-//    if (self.callback){
-//        self.callback(array,size);
-//    }
-//}
-//
-//@end
-// -----FLX_INJECT END-----
+
 @implementation OngoingCallThreadLocalContextWebrtcTerminationResult
 
 - (instancetype)initWithFinalState:(tgcalls::FinalState)finalState {
@@ -1535,11 +1524,13 @@ static void (*InternalVoipLoggingFunction)(NSString *) = NULL;
 - (void)setFlexatarCallback:(bool)callback {
     if (_tgVoip) {
         std::function<void(const int16_t*_Nullable,int)> cb;
-        cb = [self](const int16_t* audioBuffer,int len){
-            printf("FLX_INJECT flexatar callback");
-            NSData *data = [NSData dataWithBytes:audioBuffer length:len * sizeof(int16_t)];
-            _flxAudioCallback(data);
-        };
+        if (callback){
+            cb = [self](const int16_t* audioBuffer,int len){
+                //            printf("FLX_INJECT flexatar callback");
+                NSData *data = [NSData dataWithBytes:audioBuffer length:len * sizeof(int16_t)];
+                _flxAudioCallback(data);
+            };
+        }
         _tgVoip->setFlexatarCallback(cb);
     }
 }
@@ -1715,6 +1706,8 @@ private:
     rtc::Thread *_currentAudioDeviceModuleThread;
     
     SharedCallAudioDevice * _audioDevice;
+    
+    void (^_flxAudioCallback)(NSData * _Nonnull);
 }
 
 @end
@@ -1737,11 +1730,12 @@ private:
     disableAudioInput:(bool)disableAudioInput
     preferX264:(bool)preferX264
     logPath:(NSString * _Nonnull)logPath
-audioDevice:(SharedCallAudioDevice * _Nullable)audioDevice {
+audioDevice:(SharedCallAudioDevice * _Nullable)audioDevice 
+ flexatarAudioCallback:(void (^_Nullable)(NSData * _Nonnull))flxAudioCallback{
     self = [super init];
     if (self != nil) {
         _queue = queue;
-        
+        _flxAudioCallback = flxAudioCallback;
         tgcalls::PlatformInterface::SharedInstance()->preferX264 = preferX264;
 
         _sinks = [[NSMutableDictionary alloc] init];
@@ -2087,6 +2081,20 @@ audioDevice:(SharedCallAudioDevice * _Nullable)audioDevice {
 - (void)setIsMuted:(bool)isMuted {
     if (_instance) {
         _instance->setIsMuted(isMuted);
+    }
+}
+
+- (void)setFlexatarCallback:(bool)callback {
+    if (_instance) {
+        std::function<void(const int16_t*_Nullable,int)> cb;
+        if (callback){
+            cb = [self](const int16_t* audioBuffer,int len){
+                //            printf("FLX_INJECT flexatar callback");
+                NSData *data = [NSData dataWithBytes:audioBuffer length:len * sizeof(int16_t)];
+                _flxAudioCallback(data);
+            };
+        }
+        _instance->setGroupFlexatarCallback(cb);
     }
 }
 

@@ -35,14 +35,20 @@ final class VoiceChatCameraPreviewController: ViewController {
     private let cameraNode: PreviewVideoNode
     private let shareCamera: (ASDisplayNode, Bool) -> Void
     private let switchCamera: () -> Void
+    private let switchFrontCamera: () -> Void
+    private let displayFlexatar: () -> Void
+    private let stopFlexatar: () -> Void
     
     private var presentationDataDisposable: Disposable?
     
-    init(sharedContext: SharedAccountContext, cameraNode: PreviewVideoNode, shareCamera: @escaping (ASDisplayNode, Bool) -> Void, switchCamera: @escaping () -> Void) {
+    init(sharedContext: SharedAccountContext, cameraNode: PreviewVideoNode, shareCamera: @escaping (ASDisplayNode, Bool) -> Void, switchCamera: @escaping () -> Void, displayFlexatar: @escaping () -> Void, switchFrontCamera: @escaping () -> Void, stopFlexatar: @escaping () -> Void) {
         self.sharedContext = sharedContext
         self.cameraNode = cameraNode
         self.shareCamera = shareCamera
         self.switchCamera = switchCamera
+        self.switchFrontCamera = switchFrontCamera
+        self.displayFlexatar = displayFlexatar
+        self.stopFlexatar = stopFlexatar
         
         super.init(navigationBarPresentationData: nil)
         
@@ -79,6 +85,18 @@ final class VoiceChatCameraPreviewController: ViewController {
         self.controllerNode.switchCamera = { [weak self] in
             self?.switchCamera()
             self?.cameraNode.flip(withBackground: false)
+        }
+        self.controllerNode.switchFrontCamera = { [weak self] in
+            self?.switchFrontCamera()
+            self?.cameraNode.flip(withBackground: false)
+        }
+        self.controllerNode.displayFlexatar = { [weak self] in
+            self?.displayFlexatar()
+            
+        }
+        self.controllerNode.stopFlexatar = { [weak self] in
+            self?.stopFlexatar()
+            
         }
         self.controllerNode.dismiss = { [weak self] in
             self?.presentingViewController?.dismiss(animated: false, completion: nil)
@@ -145,6 +163,9 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
     
     var shareCamera: ((Bool) -> Void)?
     var switchCamera: (() -> Void)?
+    var switchFrontCamera: (() -> Void)?
+    var displayFlexatar: (() -> Void)?
+    var stopFlexatar: (() -> Void)?
     var dismiss: (() -> Void)?
     var cancel: (() -> Void)?
     
@@ -248,11 +269,18 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
         self.wheelNode.selectedIndexChanged = { [weak self] index in
             if let strongSelf = self {
 //                if (index == 1 && strongSelf.selectedTabIndex == 2) || (index == 2 && strongSelf.selectedTabIndex == 1) {
-                if (index == 2 && strongSelf.selectedTabIndex == 3) || (index == 3 && strongSelf.selectedTabIndex == 2) {
+                if (index == 2 )  {
+                    strongSelf.switchFrontCamera?()
+                }
+                if(index == 3) {
                     strongSelf.switchCamera?()
                 }
                 
+                if (index == 1){
+                    strongSelf.displayFlexatar?()
+                }
                 if index == 0 && [1, 2, 3].contains(strongSelf.selectedTabIndex) {
+                    strongSelf.stopFlexatar?()
                     strongSelf.broadcastPickerView?.isHidden = false
                     strongSelf.cameraNode.updateIsBlurred(isBlurred: true, light: false, animated: true)
                     let transition = ContainedViewLayoutTransition.animated(duration: 0.3, curve: .easeInOut)
@@ -327,6 +355,7 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
     
     @objc func cancelPressed() {
         self.cancel?()
+        self.stopFlexatar?()
     }
     
     @objc func dimTapGesture(_ recognizer: UITapGestureRecognizer) {
