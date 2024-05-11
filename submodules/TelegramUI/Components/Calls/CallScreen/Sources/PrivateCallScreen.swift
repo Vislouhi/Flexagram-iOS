@@ -8,6 +8,7 @@ import ComponentFlow
 import SwiftSignalKit
 import UIKitRuntimeUtils
 import TelegramPresentationData
+import Flexatar
 
 public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictureControllerDelegate {
     public struct State: Equatable {
@@ -179,6 +180,8 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
     private let avatarLayer: AvatarLayer
     private let titleView: TextView
     private let backButtonView: BackButtonView
+    private let flxButtonView: ImageButtonFlxView
+    private let flxEffectPanelView: EffectsPanelFlxImageView
     
     private var statusView: StatusView
     private var weakSignalView: WeakSignalView?
@@ -253,10 +256,14 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
         self.videoContainerBackgroundView = RoundedCornersView(color: .black)
         self.overlayContentsVideoContainerBackgroundView = RoundedCornersView(color: UIColor(white: 0.1, alpha: 1.0))
         
+        
         self.titleView = TextView()
         self.statusView = StatusView()
         
         self.backButtonView = BackButtonView(frame: CGRect())
+        self.flxButtonView = ImageButtonFlxView(frame: CGRect(),image: UIImage(bundleImageName: "Flexatar/ColoredLogo"))
+        self.flxEffectPanelView = EffectsPanelFlxImageView()
+        self.flxEffectPanelView.isHidden = true
         
         self.pipView = PrivateCallPictureInPictureView(frame: CGRect(origin: CGPoint(), size: CGSize()))
         
@@ -290,6 +297,8 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
         }
         
         self.addSubview(self.backButtonView)
+        self.addSubview(self.flxButtonView)
+        self.addSubview(self.flxEffectPanelView)
         
         (self.layer as? SimpleLayer)?.didEnterHierarchy = { [weak self] in
             guard let self else {
@@ -310,6 +319,16 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
         }
         
         self.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.tapGesture(_:))))
+        
+        self.flxButtonView.pressed = {
+            print("FLX_INJECT flx effect punel button pressed")
+            self.flxEffectPanelView.isHidden = false
+        }
+        
+        self.flxEffectPanelView.closeAction = {
+            print("FLX_INJECT flx effect punel close button pressed")
+            self.flxEffectPanelView.isHidden = true
+        }
         
         self.backButtonView.pressAction = { [weak self] in
             guard let self else {
@@ -847,6 +866,10 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
         }
         
         let backButtonSize = self.backButtonView.update(text: params.state.strings.Common_Back)
+        var flxSize = backButtonSize
+        flxSize.height *= 2
+        flxSize.width = flxSize.height
+        self.flxButtonView.update(size:flxSize)
         
         let backButtonY: CGFloat
         if currentAreControlsHidden {
@@ -857,6 +880,22 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
         let backButtonFrame = CGRect(origin: CGPoint(x: params.insets.left + 10.0, y: backButtonY), size: backButtonSize)
         transition.setFrame(view: self.backButtonView, frame: backButtonFrame)
         transition.setAlpha(view: self.backButtonView, alpha: currentAreControlsHidden ? 0.0 : 1.0)
+        
+        var flxButtonFrame = backButtonFrame
+        flxButtonFrame.origin.x += flxButtonFrame.size.width+20.0
+        flxButtonFrame.size = flxSize
+        flxButtonFrame.origin.y -= (flxSize.height - backButtonSize.height)/2
+        transition.setFrame(view: self.flxButtonView, frame: flxButtonFrame)
+        transition.setAlpha(view: self.flxButtonView, alpha: currentAreControlsHidden ? 0.0 : 1.0)
+        
+        let panelWidth = params.size.width*0.9
+        let panelInset = (params.size.width-panelWidth)/2
+        let flxEffectPanelFrame = CGRect(origin: CGPoint(x:panelInset,y:flxButtonFrame.maxY+15), size: CGSize(width: panelWidth, height: 100))
+        
+        self.flxEffectPanelView.update(transition: transition, frame: flxEffectPanelFrame)
+//        transition.setFrame(view:self.flxEffectPanelView, frame: flxEffectPanelFrame)
+        transition.setAlpha(view: self.flxEffectPanelView, alpha: currentAreControlsHidden ? 0.0 : 1.0)
+        
         
         if case let .active(activeState) = params.state.lifecycleState {
             let emojiView: KeyEmojiView

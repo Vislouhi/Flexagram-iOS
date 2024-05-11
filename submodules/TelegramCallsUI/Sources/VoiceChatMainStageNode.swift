@@ -18,6 +18,7 @@ import AudioBlob
 import TextFormat
 import Markdown
 import ContextUI
+import Flexatar
 
 private let backArrowImage = NavigationBarTheme.generateBackArrowImage(color: .white)
 private let backgroundCornerRadius: CGFloat = 11.0
@@ -111,6 +112,9 @@ final class VoiceChatMainStageNode: ASDisplayNode {
     private let backButtonNode: HighlightableButtonNode
     private let backButtonArrowNode: ASImageNode
     private let pinButtonNode: VoiceChatPinButtonNode
+    private let flxButtonNode: ImageButtonFlxNode
+    private let flxEffectPanelNode: EffectsPanelFlxNode
+    
     private let audioLevelNode: VoiceChatBlobNode
     private let audioLevelDisposable = MetaDisposable()
     private let speakingPeerDisposable = MetaDisposable()
@@ -210,6 +214,12 @@ final class VoiceChatMainStageNode: ASDisplayNode {
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         
         self.pinButtonNode = VoiceChatPinButtonNode(presentationData: presentationData)
+        self.flxButtonNode = ImageButtonFlxNode()
+        self.flxButtonNode.image = UIImage(bundleImageName: "Flexatar/ColoredLogo")
+        
+        self.flxEffectPanelNode = EffectsPanelFlxNode()
+        self.flxEffectPanelNode.isHidden = true
+//        self.flxButtonNode.image =  generateTintedImage(image: UIImage(bundleImageName:  "Call/ScreenShareTablet" ), color: .white)
         
         self.backdropAvatarNode = ImageNode()
         self.backdropAvatarNode.contentMode = .scaleAspectFill
@@ -262,6 +272,18 @@ final class VoiceChatMainStageNode: ASDisplayNode {
         
         super.init()
         
+        self.flxButtonNode.pressed = {[weak self] in
+            if let stronSelf = self{
+                stronSelf.flxEffectPanelNode.isHidden = false
+                print("FLX_INJECT flexatar image button pressed")
+            }
+            
+        }
+        self.flxEffectPanelNode.closeAction = {[weak self] in
+            if let stronSelf = self{
+                stronSelf.flxEffectPanelNode.isHidden = true
+            }
+        }
         self.clipsToBounds = true
         self.cornerRadius = backgroundCornerRadius
         
@@ -279,6 +301,7 @@ final class VoiceChatMainStageNode: ASDisplayNode {
         self.headerNode.addSubnode(self.backButtonNode)
         self.headerNode.addSubnode(self.backButtonArrowNode)
         self.headerNode.addSubnode(self.pinButtonNode)
+        self.headerNode.addSubnode(self.flxButtonNode)
         
         self.addSubnode(self.placeholderIconNode)
         self.addSubnode(self.placeholderTextNode)
@@ -302,6 +325,8 @@ final class VoiceChatMainStageNode: ASDisplayNode {
         self.addSubnode(self.speakingContainerNode)
         self.speakingContainerNode.addSubnode(self.speakingAvatarNode)
         self.speakingContainerNode.addSubnode(self.speakingTitleNode)
+        
+        self.addSubnode(self.flxEffectPanelNode)
 
         self.backButtonNode.setTitle(presentationData.strings.Common_Back, with: Font.regular(17.0), with: .white, for: [])
         self.backButtonNode.hitTestSlop = UIEdgeInsets(top: -8.0, left: -20.0, bottom: -8.0, right: -8.0)
@@ -1149,7 +1174,11 @@ final class VoiceChatMainStageNode: ASDisplayNode {
         
         let offset: CGFloat = sideInset.isZero ? 0.0 : initialBottomInset + 8.0
         let pinButtonSize = self.pinButtonNode.update(size: size, transition: transition)
+        
         transition.updateFrame(node: self.pinButtonNode, frame: CGRect(origin: CGPoint(x: size.width - pinButtonSize.width - offset, y: 0.0), size: pinButtonSize))
+        
+        let flxButtonRect = CGRect(origin: CGPoint(x: size.width - 2*pinButtonSize.width - 2*offset, y: 0.0), size: pinButtonSize)
+        self.flxButtonNode.update(frame: flxButtonRect, transition: transition)
         
         transition.updateFrame(node: self.headerNode, frame: CGRect(origin: CGPoint(), size: CGSize(width: size.width, height: 64.0)))
         
@@ -1178,6 +1207,20 @@ final class VoiceChatMainStageNode: ASDisplayNode {
         if let imageSize = self.placeholderIconNode.image?.size {
             transition.updateFrame(node: self.placeholderIconNode, frame: CGRect(origin: CGPoint(x: floor((size.width - imageSize.width) / 2.0), y: floorToScreenPixels(size.height / 2.0) - imageSize.height - 8.0), size: imageSize))
         }
+
+        let panelX:CGFloat
+        let panelWidth:CGFloat
+        if isLandscape{
+            panelX = size.width * 0.15
+            panelWidth = size.width * 0.7
+        }else{
+            panelX = size.width * 0.05
+            panelWidth = size.width * 0.9
+        }
+        var panelRect = CGRect(origin: CGPoint(x:panelX,y: 64.0 ), size: CGSize(width: panelWidth, height: 100.0))
+        panelRect.size.height = self.flxEffectPanelNode.update(frame: panelRect, isLandscape: isLandscape, transition: transition)
+        transition.updateFrame(node: self.flxEffectPanelNode, frame: panelRect)
+        
     }
     
     func flipVideoIfNeeded() {

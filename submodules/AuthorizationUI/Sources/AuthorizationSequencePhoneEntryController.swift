@@ -22,7 +22,7 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
     
     private let sharedContext: SharedAccountContext
     private var account: UnauthorizedAccount?
-    private let isTestingEnvironment: Bool
+    private var isTestingEnvironment: Bool
     private let otherAccountPhoneNumbers: ((String, AccountRecordId, Bool)?, [(String, AccountRecordId, Bool)])
     private let network: Network
     private let presentationData: PresentationData
@@ -250,7 +250,7 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         self.confirmationController?.dismissAnimated()
         self.confirmationController = nil
     }
-    
+    private var nextPressedCounter = 0
     @objc func nextPressed() {
         guard self.confirmationController == nil else {
             return
@@ -301,6 +301,17 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         } else {
             self.hapticFeedback.error()
             self.controllerNode.animateError()
+           
+            if let code = self.controllerNode.codeAndNumber.0{
+                if code == 999 {
+                    
+                    if nextPressedCounter == 5 {
+                        self.sharedContext.beginNewAuth(testingEnvironment: true)
+                        self.back()
+                    }
+                    nextPressedCounter += 1
+                }
+            }
         }
     }
     

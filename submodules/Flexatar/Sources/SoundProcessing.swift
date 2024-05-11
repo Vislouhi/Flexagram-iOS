@@ -134,17 +134,34 @@ public class SoundProcessing{
         return nil
         
     }
+    public static let soundQueue =  DispatchQueue(label: "soundProc",qos:.userInitiated)
+    public static let nnQueue =  DispatchQueue(label: "nnProc",qos:.userInitiated)
+    private static var soundQueueFree = true
+    private static var nnQueueFree = true
     public static func makeAnimVector(_ data :Data){
-        if let smallAudioPacket = convertToFloat16000(data){
-            DispatchQueue.global().async {
-                if let nnReadyPacket = collectPackets(smallAudioPacket){
+        let data1 = Data(data)
+        if soundQueueFree {
+            soundQueueFree = false
+            soundQueue.async {
+                
+                if let smallAudioPacket = convertToFloat16000(data1){
                     
-                    let animVector = AnimationNN.submitAudioPacket(data: nnReadyPacket)
-                    speachAnimVector = animVector
-//                    print(animVector)
+                    if let nnReadyPacket = collectPackets(smallAudioPacket){
+                        if nnQueueFree {
+                            nnQueueFree = false
+                            nnQueue.async {
+                                let animVector = AnimationNN.submitAudioPacket(data: nnReadyPacket)
+                                speachAnimVector = animVector
+                                nnQueueFree = true
+                            }
+                        }
+                        
+                        // print(animVector)
+                    }
                 }
+                soundQueueFree = true
+                
             }
-            
         }
         
     }

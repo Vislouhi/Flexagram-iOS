@@ -221,6 +221,13 @@ public class AnimationNN {
     }
     public static func prepare(){
         compileModels()
+       if let flxFileUrl = Bundle.main.path(forResource: "x00_char1t", ofType: "flx"){
+           _ = UnpackFlexatarFile(path: flxFileUrl)
+//            let metaData = MetaDataFlexatar(withPreviewImage: true,atPath: flxFileUrl)
+//            print("FLX_INJECT meatadata name:\(metaData.flxInfo!.name)")
+        }else{
+            print("FLX_INJECT can not find flexatar file")
+        }
         
     }
     

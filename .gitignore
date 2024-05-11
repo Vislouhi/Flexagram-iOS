@@ -68,3 +68,5 @@ build-input/*
 Telegram/Telegram-iOS/Resources/wav_to_mel_good.mlm
 Telegram/Telegram-iOS/Resources/wmel_to_phoneme.mlm
 Telegram/Telegram-iOS/Resources/wphoneme_to_avec.mlm
+build-system/fake-codesigning/*
+build-system/fake-codesigning_tg/*

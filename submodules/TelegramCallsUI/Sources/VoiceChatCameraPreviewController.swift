@@ -11,6 +11,7 @@ import SolidRoundedButtonNode
 import PresentationDataUtils
 import UIKitRuntimeUtils
 import ReplayKit
+import Flexatar
 
 private let accentColor: UIColor = UIColor(rgb: 0x007aff)
 
@@ -169,6 +170,10 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
     var dismiss: (() -> Void)?
     var cancel: (() -> Void)?
     
+
+    private let flexatarScrollNode:HorizontalScrollChooseFlxNode
+//    private let flexatarScrollNode1:HorizontalListFlxNode
+    
     init(controller: VoiceChatCameraPreviewController, sharedContext: SharedAccountContext, cameraNode: PreviewVideoNode) {
         self.controller = controller
         self.sharedContext = sharedContext
@@ -236,6 +241,11 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
         
         self.wheelNode = WheelControlNode(items: [WheelControlNode.Item(title: UIDevice.current.model == "iPad" ? self.presentationData.strings.VoiceChat_VideoPreviewTabletScreen : self.presentationData.strings.VoiceChat_VideoPreviewPhoneScreen), WheelControlNode.Item(title:self.presentationData.strings.Flexatar_VideoPreviewFlexatar),WheelControlNode.Item(title: self.presentationData.strings.VoiceChat_VideoPreviewFrontCamera), WheelControlNode.Item(title: self.presentationData.strings.VoiceChat_VideoPreviewBackCamera)], selectedIndex: self.selectedTabIndex)
         
+//        let pathList = Array(0...6).map{Bundle.main.path(forResource: "x00_char\($0 % 6 + 1)t", ofType: "flx")}
+        self.flexatarScrollNode = HorizontalScrollChooseFlxNode(items:StorageFlx.list,chooser: ChooserFlx.photoFlexatarChooser)
+//        self.flexatarScrollNode1 = HorizontalListFlxNode()
+        
+
         super.init()
         
         self.backgroundColor = nil
@@ -296,6 +306,11 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
                 strongSelf.selectedTabIndex = index
             }
         }
+        
+        self.flexatarScrollNode.makeNodes()
+        
+        self.contentContainerNode.addSubnode(self.flexatarScrollNode)
+//        self.contentContainerNode.addSubnode(self.flexatarScrollNode1.listNode)
         
         self.doneButton.pressed = { [weak self] in
             if let strongSelf = self {
@@ -534,6 +549,31 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
         self.wheelNode.updateLayout(size: wheelFrame.size, transition: transition)
         transition.updateFrame(node: self.wheelNode, frame: wheelFrame)
         
+//        var titleFrameAlt = CGRect(origin: CGPoint(x: floor((contentFrame.width - titleSize.width) / 2.0), y: 50.0), size: titleSize)
+//        titleFrameAlt.origin.y += 50
+//        
+//        
+//        
+//        
+//        
+//
+//        titleFrameAlt.origin.y += 50
+//        for flxItem in self.flexatarItems{
+//            transition.updateFrame(node: flxItem, frame: titleFrameAlt)
+//            titleFrameAlt.origin.y += 50
+//        }
+        let flexatarListWidth = previewFrame.width * 0.9
+        let flexatarListMargin = previewFrame.width * 0.05
+        
+        let flexatarListRect = CGRect(x: flexatarListMargin, y: titleFrame.maxY+20, width: flexatarListWidth, height: 100)
+        
+        _ = self.flexatarScrollNode.update(frame:flexatarListRect,isLandscape: isLandscape,transition:transition)
+//        flexatarScrollNode1.listNode.bounds = CGRect(x: 0.0, y: 0.0, width: layout.size.width, height: layout.size.height)
+//        flexatarScrollNode1.position = CGPoint(x: layout.size.width / 2.0, y: layout.size.height / 2.0)
+//        self.flexatarScrollNode1.makeList()
+//        transition.updateFrame(node: self.flexatarScrollNode1, frame: CGRect(origin: CGPoint(), size: layout.size))
+//        transition.updateFrame(node: self.flexatarScrollNode, frame: CGRect(origin: CGPoint(), size: layout.size))
+
         transition.updateFrame(node: self.contentContainerNode, frame: contentFrame)
     }
 }
