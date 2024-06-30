@@ -20,6 +20,7 @@ import ComponentFlow
 import ChatFolderLinkPreviewScreen
 import ChatListHeaderComponent
 import StoryPeerListComponent
+import Flexatar
 
 public enum ChatListContainerNodeFilter: Equatable {
     case all
@@ -1068,6 +1069,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
     
     var requestDeactivateSearch: (() -> Void)?
     var requestOpenPeerFromSearch: ((EnginePeer, Int64?, Bool) -> Void)?
+    var requestOpenFlexatarBot: ((EnginePeer, Int64?, Bool) -> Void)?
     var requestOpenRecentPeerOptions: ((EnginePeer) -> Void)?
     var requestOpenMessageFromSearch: ((EnginePeer, Int64?, EngineMessage.Id, Bool) -> Void)?
     var requestAddContact: ((String) -> Void)?
@@ -1217,6 +1219,49 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         self.tapRecognizer = tapRecognizer
         self.view.addGestureRecognizer(tapRecognizer)
         tapRecognizer.isEnabled = false
+        
+        
+        let accountPeerId = self.context.account.peerId.id._internalGetInt64Value()
+//        VersionControl.checkVersionChanged(accointPeerId: accountPeerId)
+        
+        
+        if let token = Backend.botToken(for: accountPeerId), !Backend.forcedAuth {
+        
+            if let _ = Backend.token(for: accountPeerId) {return}
+            Backend.getToken(tempTocken:token,accountId: accountPeerId)
+            return
+        }
+        
+        let resolveSignal = self.context.engine.peers.resolvePeerByName(name: "@flexatar_bot")
+        |> mapToSignal { result -> Signal<EnginePeer?, NoError> in
+            guard case let .result(result) = result else {
+//                print("FLX_INJECT resPeer complete")
+                return .complete()
+            }
+//            print("FLX_INJECT resPeer not complete")
+            return .single(result)
+        }
+        |> mapToSignal { peer -> Signal<EnginePeer?, NoError> in
+            if let peer = peer {
+                
+//                print("FLX_INJECT resPeer peer resolved \(peer._asPeer())")
+                
+                return .single(peer)
+            } else {
+                return .single(nil)
+            }
+        }
+        _ = (resolveSignal
+        |> deliverOnMainQueue).start(next: {[weak self]  peer in
+            if let peer = peer {
+                guard let self = self else {return}
+                self.requestOpenFlexatarBot?(peer,nil,false)
+
+                print("FLX_INJECT resPeer peer resolved \(peer.id)")
+            }
+
+        })
+        
     }
     
     @objc private func tapGesture(_ recognizer: UITapGestureRecognizer) {

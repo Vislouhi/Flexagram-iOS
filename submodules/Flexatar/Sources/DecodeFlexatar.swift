@@ -8,24 +8,28 @@
 import Foundation
 import UIKit
 import SceneKit
+import AVFoundation
 
-struct FlxNodeHeader:Codable{
+
+
+
+public struct FlxNodeHeader:Codable{
     var type:String
     var index:Int
     
 }
 
-struct FlxInfoNode:Codable{
+public struct FlxInfoNode:Codable{
     var name:String
     var date:String?
     var type:String?
     
 }
-struct Delimiter:Codable{
+public struct Delimiter:Codable{
     var type:String
     
 }
-class MetaDataFlexatar{
+public class MetaDataFlexatar{
     public var imageData:Data?
     public var flxInfo:FlxInfoNode?
     
@@ -68,6 +72,10 @@ class MetaDataFlexatar{
     }
 }
 
+public enum FlexatarType{
+    case Photo
+    case Video
+}
 public class UnpackFlexatarFile{
     private static let DELIMITER = "Delimiter"
     private static let TEXTURE_KEY = "mandalaTextureBlurBkg"
@@ -84,15 +92,20 @@ public class UnpackFlexatarFile{
     public var mandalaBorder:[(CGPoint,CGPoint)] = []
     public var mandalaFaces:[[Int]] = []
     public var mandalaBlendshapes:MTLBuffer?
+    public var videoMarkers:MTLBuffer?
     public var blinkBlendshape:MTLBuffer?
     public var mouth:UnpackMouth!
+    public var flxInfo:FlxInfoNode!
+    public var flxType:FlexatarType = .Photo
+    private let fileName:String
     
     init(path:String){
         guard let fileHandle = FileHandle(forReadingAtPath: path) else {
-            print("FLX_INJECT Failed to open file for reading")
-           return
+//            print("FLX_INJECT Failed to open file for reading")
+           fatalError("FLX_INJECT Failed to open file for reading")
         }
-        
+        self.fileName = String(URL(fileURLWithPath: path).lastPathComponent.split(separator: ".")[0])
+        print("FLX_INJECT load flx name \(URL(fileURLWithPath: path).lastPathComponent)")
         defer {
             fileHandle.closeFile() // Close the file when done
         }
@@ -120,12 +133,239 @@ public class UnpackFlexatarFile{
                 break
             }
         }
-        self.mouth = UnpackMouth(dict: self.dataDict[Self.MOUTH_ENTRY]!)
+        self.flxInfo = try! decoder.decode(FlxInfoNode.self, from: self.dataDict[Self.FACE_ENTRY]!["Info"]![0])
+        if let flxType = self.flxInfo.type {
+            if flxType == "video"{
+                self.flxType = .Video
+            }else{
+                self.flxType = .Photo
+            }
+        }else{
+            self.flxType = .Photo
+        }
+        if self.flxType == .Photo{
+            self.makeMouthKeyPoints()
+            
+        }else{
+            self.createTmpVideoFile()
+            self.makeMouthKeyPointsVideo()
+            self.prepareVideoPositions()
+//            TODO: prepare video
+        }
         
-        self.makeMouthKeyPoints()
         self.makeMandala()
         
+        if let mouthDataDict = self.dataDict[Self.MOUTH_ENTRY]{
+            self.mouth = UnpackMouth(dict: mouthDataDict)
+        } else {
+            let mouthDataDict = Self.readFlxDataDict(path: StorageFlx.getFilePath(name: "FLX_mouth_collection1")!)
+            self.mouth = UnpackMouth(dict: mouthDataDict)
+        }
+        
+        
+        
     }
+    
+    private static func readFlxDataDict(path:String) -> [String : [Data]]{
+        guard let fileHandle = FileHandle(forReadingAtPath: path) else {
+//            print("FLX_INJECT Failed to open file for reading")
+           fatalError("FLX_INJECT Failed to open file for reading")
+        }
+        defer {
+            fileHandle.closeFile() // Close the file when done
+        }
+        let decoder = JSONDecoder()
+        
+        
+        var dataDict = [String:[Data]]()
+        while(true){
+            let (nodeHeader,data) =  MetaDataFlexatar.readBlock(fileHandle: fileHandle, decoder: decoder)
+            if let header = nodeHeader{
+                print("FLX_INJECT found header : \(header.type)")
+                
+                if (dataDict[header.type] == nil){
+                    dataDict[header.type] = []
+                }
+                dataDict[header.type]?.append(data)
+          
+                
+            }else{
+                print("FLX_INJECT end of file")
+                break
+            }
+        }
+        return dataDict
+    }
+    private func createTmpVideoFile(){
+        let data = self.dataDict[Self.FACE_ENTRY]!["video"]![0]
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let fileURL = tempDirectory.appendingPathComponent("\(self.fileName).mp4")
+//        try? FileManager.default.removeItem(atPath: fileURL.path)
+        if !FileManager.default.fileExists(atPath: fileURL.path) {
+            do {
+                try data.write(to: fileURL)
+                print("FLX_INJECT tmp video writen sucess")
+            } catch {
+                print("Error writing data to file: \(error)")
+           }
+        }else{
+            print("FLX_INJECT tmp video exists")
+        }
+    }
+    private func createMTLTexFromVideoFrame(imageBuffer:CVImageBuffer,textureCache: CVMetalTextureCache) -> MTLTexture{
+        let width = CVPixelBufferGetWidth(imageBuffer)
+        let height = CVPixelBufferGetHeight(imageBuffer)
+        var imageTexture: CVMetalTexture?
+
+   
+        CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, textureCache, imageBuffer, nil, .bgra8Unorm, width, height, 0, &imageTexture)
+        
+        guard let imageTextureUnwarped = imageTexture else{
+            fatalError("FLX_INJECT unable to create texture from image")
+        }
+        let texture = CVMetalTextureGetTexture(imageTextureUnwarped)
+        guard let textureUnwarped = texture else{
+            fatalError("FLX_INJECT unable to create metal texture")
+        }
+        return textureUnwarped
+        
+    }
+    public var videoTextures:[MTLTexture] = []
+    private var currentTexIdx:Int = 0
+    private var videoLoadComplete = false
+    public var videoOrientationMatrix:simd_float4x4?
+    private var videoPositions:[Float]!
+    public func getNextVideoTexture() -> (Int,MTLTexture){
+//        print("FLX_INJECT current texture idx \(currentTexIdx)")
+        let idx = currentTexIdx
+        self.lock.lock()
+        
+        let currentTexture = videoTextures[currentTexIdx]
+        self.lock.unlock()
+//        print("FLX_INJECT current texture idx \(currentTexIdx)")
+        currentTexIdx += 1
+        if currentTexIdx >= videoTextures.count{
+            if (videoLoadComplete){
+                currentTexIdx = 0
+            }else{
+                currentTexIdx -= 1
+            }
+        }
+        return (idx,currentTexture)
+    }
+    private var mouthKeyPointsVideo:[[[Float]]] = []
+    private func makeMouthKeyPointsVideo(){
+        let data = self.dataDict[Self.FACE_ENTRY]!["markers"]![0]
+        let frameCount = data.count / MetalResProviderFlx.vtxBufferOfset
+        print("FLX_INJECT video frame count by makers \(frameCount)")
+        for j in 0..<frameCount{
+            var currentKeyPoints = [[Float]]()
+            for (_,idx) in Self.idxOfInterest.enumerated(){
+                let startIdx = MetalResProviderFlx.vtxBufferOfset * j + idx * 8
+                let keyPoint = data.subdata(in: startIdx..<(startIdx+4*4)).toFloatArray()
+                currentKeyPoints.append(keyPoint.map{$0*2-1})
+            }
+            self.mouthKeyPointsVideo.append(currentKeyPoints)
+        }
+    }
+    public func calcMouthKeyPointsVideo(idx:Int,speechBshKey:[Float],screenRatio:Float) -> [SIMD4<Float>]{
+        let currentPoints = mouthKeyPointsVideo[idx]
+        var ret:[SIMD4<Float>] = []
+        for p in currentPoints{
+            ret.append(SIMD4<Float>(-1*p[0],p[1],0,1))
+        }
+        let mScale = getMouthScale(idx:idx)
+        for i in 0..<5{
+            ret[2].y += speechBshKey[i] * SoundProcessing.speachAnimVector[i] * mScale / 0.4 * 0.3
+            ret[i].y *= screenRatio
+        }
+        return ret
+    }
+    public func getVideoHeadPosition(idx:Int) -> (Float,Float,Float){
+        return (self.videoPositions[idx*6],self.videoPositions[idx*6+1],self.videoPositions[idx*6+5])
+    }
+    public func getMouthScale(idx:Int)->Float{
+        return abs(self.mouthKeyPointsVideo[idx][5][0]-self.mouthKeyPointsVideo[idx][4][0])
+    }
+    
+    private func loadVideoMarkers(device:MTLDevice){
+        let data = self.dataDict[Self.FACE_ENTRY]!["markers"]![0]
+        self.videoMarkers = MetalResProviderFlx.makeMTLBuffer(device: device, buffer: data)
+    }
+    private func prepareVideoPositions(){
+        let data = self.dataDict[Self.FACE_ENTRY]!["positions"]![0]
+        self.videoPositions = data.toFloatArray()
+        
+    }
+    private static func matrixFromTransform(transofrm: CGAffineTransform) -> simd_float4x4{
+        let videoAngle  = atan2(transofrm.b, transofrm.a);
+        print("FLX_INJECT video rotation angle \(videoAngle)")
+        return GLKMatrix4MakeZRotation(Float(videoAngle)).asSimd()
+        
+    }
+    public var videoRatio:Float?
+    private func loadVideo(device:MTLDevice,firstFrameReady:@escaping ()->()){
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let fileURL = tempDirectory.appendingPathComponent("\(self.fileName).mp4")
+//        let options = [AVURLAssetOverrideMIMETypeKey: false]
+        let asset = AVAsset(url: fileURL)
+        let reader = try! AVAssetReader(asset: asset)
+
+        guard let track = asset.tracks(withMediaType: .video).first else {
+          return
+        }
+        if #available(iOS 15, *) {
+            Task{
+                let transofrm  = try! await track.load(.preferredTransform)
+                self.videoOrientationMatrix = Self.matrixFromTransform(transofrm: transofrm)
+                
+            }
+        } else {
+            let transofrm  = track.preferredTransform;
+            self.videoOrientationMatrix = Self.matrixFromTransform(transofrm: transofrm)
+        };
+
+        let outputSettings: [String: Any] = [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+            ]
+//        let trackOutput = AVAssetReaderVideoCompositionOutput(videoTracks: [track], videoSettings: outputSettings)
+        let trackOutput = AVAssetReaderTrackOutput(track: track, outputSettings: outputSettings)
+        reader.add(trackOutput)
+        reader.startReading()
+        
+        var frames: [CMSampleBuffer] = []
+        var counter = 0
+
+        var textureCache: CVMetalTextureCache?
+        CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, device, nil, &textureCache)
+        guard let textureCacheUnwarped = textureCache else{
+            fatalError("FLX_INJECT unable to create texture cache")
+        }
+
+        while let sampleBuffer = trackOutput.copyNextSampleBuffer() {
+            frames.append(sampleBuffer)
+//            autoreleasepool {
+                guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+                    fatalError("FLX_INJECT unpack video fails")
+                }
+            
+                self.videoTextures.append(
+                        self.createMTLTexFromVideoFrame(imageBuffer: imageBuffer, textureCache: textureCacheUnwarped)
+                    )
+
+//            print("FLX_INJECT frame counter \(counter)")
+            if counter == 0 {
+                videoRatio = Float(self.videoTextures[0].width)/Float(self.videoTextures[0].height)
+                if videoRatio! < 1 {videoRatio = 1.0/videoRatio!}
+                firstFrameReady()
+
+            }
+            counter+=1
+            
+        }
+        self.videoLoadComplete = true
+    }
+    
     private static let idxOfInterest = [88,97,50,43,54,46]
     private var mouthPoints:[[SIMD4<Float>]] = []
     
@@ -181,6 +421,7 @@ public class UnpackFlexatarFile{
         }
         print("FLX_INJECT makeMouthKeyPoints \(mouthPoints)")
     }
+   
     
     private func makeMandala(){
         let dataCheckpoints = self.dataDict[Self.FACE_ENTRY]!["mandalaCheckpoints"]![0]
@@ -242,11 +483,30 @@ public class UnpackFlexatarFile{
         let data = self.dataDict[Self.FACE_ENTRY]!["eyelidBlendshape"]![0]
         blinkBlendshape = MetalResProviderFlx.makeMTLBuffer(device: device, buffer: data)
     }
-   
+    let lock = NSLock()
     public func prepareMetalRes(device:MTLDevice){
-        makeTetxures(device: device)
-        makeBlendshapes(device: device)
-        makeBlinkBlendshape(device: device)
+        if flxType == .Photo{
+            makeTetxures(device: device)
+            makeBlendshapes(device: device)
+            makeBlinkBlendshape(device: device)
+            
+        }else{
+//            let semafore = DispatchSemaphore(value: 1)
+            lock.lock()
+            DispatchQueue(label: "textureLoadQueue", attributes: .concurrent).async {
+
+                self.loadVideo(device: device, firstFrameReady: {[self] in
+                    self.lock.unlock()
+//                    semafore.signal()
+                   
+                })
+            }
+           
+//            semafore.wait()
+            print("FLX_INJECT video tex count \(videoTextures.count)")
+            self.loadVideoMarkers(device: device)
+//            TODO: initiate video flexatar metel resourse
+        }
         mouth.prepare(device: device)
     }
     public func calcBshpCtrl(rx:Float,ry:Float)->([Int32],[Float],simd_float4x4){

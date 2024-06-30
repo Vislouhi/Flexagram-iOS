@@ -58,9 +58,18 @@ swift_library(
     deps = [
         "//submodules/Display:Display",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
-        "//submodules/ItemListUI:ItemListUI",
-        "//submodules/MergeLists:MergeLists",
+        #"//submodules/ItemListUI:ItemListUI",
+        #"//submodules/MergeLists:MergeLists",
         "//submodules/ComponentFlow:ComponentFlow",
+        "//submodules/TelegramUI/Components/TabSelectorComponent:TabSelectorComponent",
+        "//submodules/TelegramUI/Components/CameraScreen:CameraScreen",
+        "//submodules/LegacyComponents:LegacyComponents",
+        "//submodules/AccountContext:AccountContext",
+        "//submodules/Components/ComponentDisplayAdapters:ComponentDisplayAdapters",
+        "//submodules/TelegramCore:TelegramCore",
+        "//submodules/LocalMediaResources:LocalMediaResources",
+#        "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
+        
 
       
     ],

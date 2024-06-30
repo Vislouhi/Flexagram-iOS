@@ -7,6 +7,7 @@ import MtProtoKit
 
 func _internal_requestStartBot(account: Account, botPeerId: PeerId, payload: String?) -> Signal<Void, NoError> {
     if let payload = payload, !payload.isEmpty {
+        
         return account.postbox.loadedPeerWithId(botPeerId)
         |> mapToSignal { botPeer -> Signal<Void, NoError> in
             if let inputUser = apiInputUser(botPeer) {
@@ -23,6 +24,8 @@ func _internal_requestStartBot(account: Account, botPeerId: PeerId, payload: Str
                 return .complete()
             }
         }
+      
+        
     } else {
         return enqueueMessages(account: account, peerId: botPeerId, messages: [.message(text: "/start", attributes: [], inlineStickers: [:], mediaReference: nil, threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])]) |> mapToSignal { _ -> Signal<Void, NoError> in
             return .complete()

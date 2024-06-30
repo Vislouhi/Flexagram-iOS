@@ -634,7 +634,7 @@ plist_fragment(
     template =
     """
     <key>CFBundleDisplayName</key>
-    <string>Flexatar Telegram</string>
+    <string>Flexatar</string>
     """
 )
 
@@ -1770,7 +1770,7 @@ plist_fragment(
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>Flexatar Telegram</string>
+    <string>Flexatar</string>
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}</string>
     <key>CFBundleName</key>
@@ -1861,7 +1861,6 @@ plist_fragment(
     <array>
         <string>audio</string>
         <string>fetch</string>
-        <string>location</string>
         <string>remote-notification</string>
         <string>voip</string>
         <string>processing</string>

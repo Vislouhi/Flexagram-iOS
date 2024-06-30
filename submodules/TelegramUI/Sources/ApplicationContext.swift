@@ -311,6 +311,9 @@ final class AuthorizedApplicationContext {
             }
 
             if let strongSelf = self, let (messages, _, notify, threadData) = messageList.last, let firstMessage = messages.first {
+//                for m in messages{
+//                    print("FLX_INJECT received messages \(m.text) , \(m.peers)")
+//                }
                 if UIApplication.shared.applicationState == .active {
                     let chatLocation: NavigateToChatControllerParams.Location
                     if let _ = threadData, let threadId = firstMessage.threadId {

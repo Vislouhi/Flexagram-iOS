@@ -99,8 +99,8 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
         
         self.containerView = UIView()
         self.containerView.clipsToBounds = true
-        self.callScreen = PrivateCallScreen()
-        
+        self.callScreen = PrivateCallScreen(context:self.call.context,frame:CGRect())
+//        self.callScreen.context = self.call.context
         super.init()
         
         self.view.addSubview(self.containerView)
@@ -311,7 +311,7 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
                         self.call.setFlexatarCallbackAuto()
                         self.call.requestVideo()
                     }
-                    
+                   
                     self.call.makeOutgoingVideoView(completion: { [weak self] outgoingVideoView in
                         guard let self else {
                             return
@@ -340,7 +340,7 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
                                 updateLayoutImpl?(layout, navigationBarHeight)
                             })
                             
-                            let controller = VoiceChatCameraPreviewController(sharedContext: self.sharedContext, cameraNode: outgoingVideoNode, shareCamera: { _, _ in
+                            let controller = VoiceChatCameraPreviewController(peerId: self.call.context.account.peerId.id._internalGetInt64Value(),sharedContext: self.sharedContext, cameraNode: outgoingVideoNode, shareCamera: { _, _ in
                                 proceed()
                             }, switchCamera: { [weak self] in
                                 print("FLX_INJECT back camera")
@@ -363,6 +363,7 @@ final class CallControllerNodeV2: ViewControllerTracingNode, CallControllerNodeP
                             },stopFlexatar: {
                                 FrameProvider.invalidateFlexatarDrawTimer()
                             })
+                            
                             self.present?(controller)
                             
                             

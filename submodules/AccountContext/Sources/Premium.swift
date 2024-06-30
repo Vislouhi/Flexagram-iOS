@@ -191,7 +191,7 @@ public struct PremiumConfiguration {
         minGroupEmojiPackLevel: Int32,
         minGroupAudioTranscriptionLevel: Int32
     ) {
-        self.isPremiumDisabled = isPremiumDisabled
+        self.isPremiumDisabled = isPremiumDisabled || true
         self.subscriptionManagementUrl = subscriptionManagementUrl
         self.showPremiumGiftInAttachMenu = showPremiumGiftInAttachMenu
         self.showPremiumGiftInTextField = showPremiumGiftInTextField

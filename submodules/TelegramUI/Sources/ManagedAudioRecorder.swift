@@ -9,6 +9,7 @@ import AccountContext
 import OpusBinding
 import ChatPresentationInterfaceState
 import AudioWaveform
+import Flexatar
 
 private let kOutputBus: UInt32 = 0
 private let kInputBus: UInt32 = 1
@@ -155,6 +156,7 @@ final class ManagedAudioRecorderContext {
     private let queue: Queue
     private let mediaManager: MediaManager
     private let oggWriter: TGOggOpusWriter
+    private let audioWriter: AudioWriter
     private let dataItem: TGDataItem
     private var audioBuffer = Data()
     
@@ -186,7 +188,7 @@ final class ManagedAudioRecorderContext {
     
     init(queue: Queue, mediaManager: MediaManager, pushIdleTimerExtension: @escaping () -> Disposable, micLevel: ValuePromise<Float>, recordingState: ValuePromise<AudioRecordingState>, beginWithTone: Bool, beganWithTone: @escaping (Bool) -> Void) {
         assert(queue.isCurrent())
-        
+        self.audioWriter = AudioWriter()
         self.id = getNextRecorderContextId()
         self.micLevel = micLevel
         self.beginWithTone = beginWithTone
@@ -496,7 +498,11 @@ final class ManagedAudioRecorderContext {
     
     func processAndDisposeAudioBuffer(_ buffer: AudioBuffer) {
         assert(self.queue.isCurrent())
+        if let pointer = buffer.mData{
+            self.audioWriter.addData(pointer:pointer,length:Int(buffer.mDataByteSize))
+        }
         
+//        print("FLX_INJECT audio buffer ready \(buffer.mDataByteSize)")
         defer {
             free(buffer.mData)
         }
@@ -665,7 +671,7 @@ final class ManagedAudioRecorderContext {
                 let bitstream = resultWaveform.makeBitstream()
                 waveform = AudioWaveform(bitstream: bitstream, bitsPerSample: 5).makeBitstream()
             }
-            
+            self.audioWriter.closeFile()
             return RecordedAudioData(compressedData: self.dataItem.data(), duration: self.oggWriter.encodedDuration(), waveform: waveform)
         } else {
             return nil

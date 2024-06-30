@@ -111,7 +111,17 @@ public class AnimationNN {
     static var  phon2avec:MLModel?
     
     static var  melList:[MLMultiArray] = []
-    
+    public static func reset(){
+        melList.removeAll()
+    }
+    static func loadModels(){
+        if modelsNotLoaded{
+            wav2mel = try? MLModel(contentsOf: getModelUrl(name:"wav_to_mel_good"))
+            mel2phon = try? MLModel(contentsOf: getModelUrl(name:"wmel_to_phoneme"))
+            phon2avec = try? MLModel(contentsOf: getModelUrl(name:"wphoneme_to_avec"))
+            modelsNotLoaded = false
+        }
+    }
     static func submitAudioPacket(data:Data)->[Float]{
         if modelsNotLoaded{
             if modelsAreNotLoading{
@@ -138,7 +148,7 @@ public class AnimationNN {
         if (melList.count == windowLen){
             let melGroup = concatMelsInGroup(mels:melList)
             let aVec = aVecBy(mel: melGroup)
-            return extractCollumnFrom(mlArray: aVec, pos: 9)
+            return extractCollumnFrom(mlArray: aVec, pos: 9).map { $0.isNaN ? 0 : $0 }
         }
         return [0.0,0.0,0.0,0.0,0.0]
     }
@@ -221,13 +231,19 @@ public class AnimationNN {
     }
     public static func prepare(){
         compileModels()
-       if let flxFileUrl = Bundle.main.path(forResource: "x00_char1t", ofType: "flx"){
+        /*if #available(iOS 14.0, *) {
+            AppAttest.start()
+        } else {
+            // Fallback on earlier versions
+        }*/
+        
+       /*if let flxFileUrl = Bundle.main.path(forResource: "x00_char1t", ofType: "flx"){
            _ = UnpackFlexatarFile(path: flxFileUrl)
 //            let metaData = MetaDataFlexatar(withPreviewImage: true,atPath: flxFileUrl)
 //            print("FLX_INJECT meatadata name:\(metaData.flxInfo!.name)")
         }else{
             print("FLX_INJECT can not find flexatar file")
-        }
+        }*/
         
     }
     

@@ -39,10 +39,12 @@ final class VoiceChatCameraPreviewController: ViewController {
     private let switchFrontCamera: () -> Void
     private let displayFlexatar: () -> Void
     private let stopFlexatar: () -> Void
+    public let peerId:Int64
     
     private var presentationDataDisposable: Disposable?
     
-    init(sharedContext: SharedAccountContext, cameraNode: PreviewVideoNode, shareCamera: @escaping (ASDisplayNode, Bool) -> Void, switchCamera: @escaping () -> Void, displayFlexatar: @escaping () -> Void, switchFrontCamera: @escaping () -> Void, stopFlexatar: @escaping () -> Void) {
+    init(peerId:Int64,sharedContext: SharedAccountContext, cameraNode: PreviewVideoNode, shareCamera: @escaping (ASDisplayNode, Bool) -> Void, switchCamera: @escaping () -> Void, displayFlexatar: @escaping () -> Void, switchFrontCamera: @escaping () -> Void, stopFlexatar: @escaping () -> Void) {
+        self.peerId = peerId
         self.sharedContext = sharedContext
         self.cameraNode = cameraNode
         self.shareCamera = shareCamera
@@ -76,7 +78,9 @@ final class VoiceChatCameraPreviewController: ViewController {
     }
     
     override public func loadDisplayNode() {
-        self.displayNode = VoiceChatCameraPreviewControllerNode(controller: self, sharedContext: self.sharedContext, cameraNode: self.cameraNode)
+        
+        self.displayNode = VoiceChatCameraPreviewControllerNode(peerId:self.peerId,controller: self, sharedContext: self.sharedContext, cameraNode: self.cameraNode)
+        
         self.controllerNode.shareCamera = { [weak self] unmuted in
             if let strongSelf = self {
                 strongSelf.shareCamera(strongSelf.cameraNode, unmuted)
@@ -132,6 +136,8 @@ final class VoiceChatCameraPreviewController: ViewController {
 }
 
 private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, ASScrollViewDelegate {
+    private let peerId:Int64
+    
     private weak var controller: VoiceChatCameraPreviewController?
     private let sharedContext: SharedAccountContext
     private var presentationData: PresentationData
@@ -172,9 +178,13 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
     
 
     private let flexatarScrollNode:HorizontalScrollChooseFlxNode
+    private let flxEffectPanelNode:EffectsPanelFlxNode
+    private let flxButtonNode: ImageButtonFlxNode
 //    private let flexatarScrollNode1:HorizontalListFlxNode
     
-    init(controller: VoiceChatCameraPreviewController, sharedContext: SharedAccountContext, cameraNode: PreviewVideoNode) {
+    init(peerId:Int64, controller: VoiceChatCameraPreviewController, sharedContext: SharedAccountContext, cameraNode: PreviewVideoNode) {
+        
+        self.peerId = peerId
         self.controller = controller
         self.sharedContext = sharedContext
         self.presentationData = sharedContext.currentPresentationData.with { $0 }
@@ -242,7 +252,11 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
         self.wheelNode = WheelControlNode(items: [WheelControlNode.Item(title: UIDevice.current.model == "iPad" ? self.presentationData.strings.VoiceChat_VideoPreviewTabletScreen : self.presentationData.strings.VoiceChat_VideoPreviewPhoneScreen), WheelControlNode.Item(title:self.presentationData.strings.Flexatar_VideoPreviewFlexatar),WheelControlNode.Item(title: self.presentationData.strings.VoiceChat_VideoPreviewFrontCamera), WheelControlNode.Item(title: self.presentationData.strings.VoiceChat_VideoPreviewBackCamera)], selectedIndex: self.selectedTabIndex)
         
 //        let pathList = Array(0...6).map{Bundle.main.path(forResource: "x00_char\($0 % 6 + 1)t", ofType: "flx")}
-        self.flexatarScrollNode = HorizontalScrollChooseFlxNode(items:StorageFlx.list,chooser: ChooserFlx.photoFlexatarChooser)
+        self.flexatarScrollNode = HorizontalScrollChooseFlxNode(chooser: ChooserFlx.inst(tag: "call", peerId: peerId))
+        self.flxButtonNode = ImageButtonFlxNode()
+        self.flxButtonNode.image = UIImage(bundleImageName: "Flexatar/ColoredLogo")
+        
+        self.flxEffectPanelNode = EffectsPanelFlxNode(chooser: ChooserFlx.inst(tag:"call",peerId:peerId))
 //        self.flexatarScrollNode1 = HorizontalListFlxNode()
         
 
@@ -268,6 +282,7 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
             self.contentContainerNode.view.addSubview(broadcastPickerView)
         }
         self.contentContainerNode.addSubnode(self.cancelButton)
+        self.contentContainerNode.addSubnode(self.flxButtonNode)
                 
         self.previewContainerNode.addSubnode(self.cameraNode)
         
@@ -275,6 +290,7 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
         self.previewContainerNode.addSubnode(self.placeholderTextNode)
         
         self.previewContainerNode.addSubnode(self.wheelNode)
+        
 
         self.wheelNode.selectedIndexChanged = { [weak self] index in
             if let strongSelf = self {
@@ -307,10 +323,9 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
             }
         }
         
-        self.flexatarScrollNode.makeNodes()
-        
-        self.contentContainerNode.addSubnode(self.flexatarScrollNode)
-//        self.contentContainerNode.addSubnode(self.flexatarScrollNode1.listNode)
+//        self.contentContainerNode.addSubnode(self.flexatarScrollNode)
+        self.contentContainerNode.addSubnode(self.flxEffectPanelNode)
+
         
         self.doneButton.pressed = { [weak self] in
             if let strongSelf = self {
@@ -327,6 +342,17 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
                 }
             }
         }))
+        self.flxEffectPanelNode.isHidden = true
+        self.flxButtonNode.pressed = {[weak self] in
+            guard let self = self else {return}
+            self.flxEffectPanelNode.isHidden = false
+            self.flxEffectPanelNode.subscribeStoargeObserver()
+            print("FLX_INJECT button pressed")
+        }
+        self.flxEffectPanelNode.closeAction = {[weak self] in
+            guard let self = self else {return}
+            self.flxEffectPanelNode.isHidden = true
+        }
     }
     
     deinit {
@@ -525,6 +551,9 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
         let cancelButtonFrame = CGRect(origin: CGPoint(x: previewFrame.minX + 17.0, y: 20.0), size: cancelButtonSize)
         transition.updateFrame(node: self.cancelButton, frame: cancelButtonFrame)
         
+        let flxButtonRect = CGRect(origin: CGPoint(x: layout.size.width - 36 - 10, y: cancelButtonFrame.minY), size: CGSize(width: 36, height: 36))
+        self.flxButtonNode.update(frame: flxButtonRect, transition: transition)
+        
         self.cameraNode.frame =  CGRect(origin: CGPoint(), size: previewSize)
         self.cameraNode.updateLayout(size: previewSize, layoutMode: isLandscape ? .fillHorizontal : .fillVertical, transition: .immediate)
       
@@ -562,12 +591,27 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, A
 //            transition.updateFrame(node: flxItem, frame: titleFrameAlt)
 //            titleFrameAlt.origin.y += 50
 //        }
-        let flexatarListWidth = previewFrame.width * 0.9
-        let flexatarListMargin = previewFrame.width * 0.05
+//        let flexatarListWidth = previewFrame.width * 0.9
+//        let flexatarListMargin = previewFrame.width * 0.05
+//        
+//        let flexatarListRect = CGRect(x: flexatarListMargin, y: titleFrame.maxY+20, width: flexatarListWidth, height: 100)
+//        
+//        _ = self.flexatarScrollNode.update(frame:flexatarListRect,isLandscape: isLandscape,transition:transition)
         
-        let flexatarListRect = CGRect(x: flexatarListMargin, y: titleFrame.maxY+20, width: flexatarListWidth, height: 100)
+        let panelX:CGFloat
+        let panelWidth:CGFloat
+        if isLandscape{
+            panelX = previewFrame.size.width * 0.15
+            panelWidth = previewFrame.size.width * 0.7
+        }else{
+            panelX = previewFrame.size.width * 0.05
+            panelWidth = previewFrame.size.width * 0.9
+        }
+        var panelRect = CGRect(origin: CGPoint(x:panelX,y: 64.0 ), size: CGSize(width: panelWidth, height: 100.0))
+        let effectPanelHeight = self.flxEffectPanelNode.update(frame: panelRect, isLandscape: isLandscape, transition: transition)
+        panelRect.size.height = effectPanelHeight
         
-        _ = self.flexatarScrollNode.update(frame:flexatarListRect,isLandscape: isLandscape,transition:transition)
+        transition.updateFrame(node: self.flxEffectPanelNode, frame: panelRect)
 //        flexatarScrollNode1.listNode.bounds = CGRect(x: 0.0, y: 0.0, width: layout.size.width, height: layout.size.height)
 //        flexatarScrollNode1.position = CGPoint(x: layout.size.width / 2.0, y: layout.size.height / 2.0)
 //        self.flexatarScrollNode1.makeList()

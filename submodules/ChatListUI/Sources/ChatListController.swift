@@ -50,6 +50,7 @@ import FullScreenEffectView
 import PeerInfoStoryGridScreen
 import ArchiveInfoScreen
 import BirthdayPickerScreen
+import Flexatar
 
 private final class ContextControllerContentSourceImpl: ContextControllerContentSource {
     let controller: ViewController
@@ -1214,6 +1215,41 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             }
         }
         
+        self.chatListDisplayNode.requestOpenFlexatarBot = { [weak self] peer, threadId, dismissSearch in
+            if let strongSelf = self {
+                let storedPeer = strongSelf.context.engine.peers.ensurePeerIsLocallyAvailable(peer: peer) |> map { _ -> Void in return Void() }
+                strongSelf.openMessageFromSearchDisposable.set((storedPeer |> deliverOnMainQueue).startStrict(completed: { [weak strongSelf] in
+                    if let strongSelf = strongSelf {
+                        if dismissSearch {
+                            strongSelf.deactivateSearch(animated: true)
+                        }
+                        var scrollToEndIfExists = false
+                        if let layout = strongSelf.validLayout, case .regular = layout.metrics.widthClass {
+                            scrollToEndIfExists = true
+                        }
+                        if let navigationController = strongSelf.navigationController as? NavigationController {
+                            var navigationAnimationOptions: NavigationAnimationOptions = []
+                            if case .chatList(.root) = strongSelf.location {
+                                navigationAnimationOptions = .removeOnMasterDetails
+                            }
+                            if case let .channel(channel) = peer, channel.flags.contains(.isForum), let threadId {
+                                let _ = strongSelf.context.sharedContext.navigateToForumThread(context: strongSelf.context, peerId: peer.id, threadId: threadId, messageId: nil, navigationController: navigationController, activateInput: nil, keepStack: .never).startStandalone()
+                            } else {
+                                strongSelf.context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: strongSelf.context, chatLocation: .peer(peer), purposefulAction: { [weak self] in
+                                    self?.deactivateSearch(animated: false)
+                                }, scrollToEndIfExists: scrollToEndIfExists, options: navigationAnimationOptions))
+                            }
+                            strongSelf.chatListDisplayNode.mainContainerNode.currentItemNode.clearHighlightAnimated(true)
+                            
+                            /*_ = (strongSelf.context.engine.messages.requestStartBot(botPeerId: peer._asPeer().id, payload: "/start") |> deliverOnMainQueue ).start(next:{_ in
+                                
+                            })*/
+                            
+                        }
+                    }
+                }))
+            }
+        }
         self.chatListDisplayNode.requestOpenPeerFromSearch = { [weak self] peer, threadId, dismissSearch in
             if let strongSelf = self {
                 let storedPeer = strongSelf.context.engine.peers.ensurePeerIsLocallyAvailable(peer: peer) |> map { _ -> Void in return Void() }
@@ -2148,7 +2184,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-                
+        
+        let accountPeerId = self.context.account.peerId.id._internalGetInt64Value()
+        VersionControl.checkVersionChanged(accointPeerId: accountPeerId)
+        
         if self.powerSavingMonitoringDisposable == nil {
             self.powerSavingMonitoringDisposable = (self.context.sharedContext.automaticMediaDownloadSettings
             |> mapToSignal { settings -> Signal<Bool, NoError> in

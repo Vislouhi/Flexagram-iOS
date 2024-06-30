@@ -8,6 +8,7 @@ import Network
 import TgVoip
 import TgVoipWebrtc
 import Flexatar
+import AccountContext
 
 
 private let debugUseLegacyVersionForReflectors: Bool = {
@@ -416,6 +417,9 @@ extension OngoingCallThreadLocalContext: OngoingCallThreadLocalContextProtocol {
 }
 
 public final class OngoingCallVideoCapturer {
+    
+    private let peerId:Int64
+    
     internal let impl: OngoingCallThreadLocalContextVideoCapturer
 
     private let isActivePromise = ValuePromise<Bool>(true, ignoreRepeated: true)
@@ -424,11 +428,13 @@ public final class OngoingCallVideoCapturer {
     }
     
     public func startFlexatarTimer(){
-        FrameProvider.flexatarDrawTimer(onFrame: {[weak self] pixelBuffer in
+        
+        FrameProvider.flexatarDrawTimer(peerId:peerId,onFrame: {[weak self] pixelBuffer in
             self?.impl.submitFlexatarBuffer(pixelBuffer)
         })
     }
-    public init(keepLandscape: Bool = false, isCustom: Bool = false) {
+    public init(peerId:Int64,keepLandscape: Bool = false, isCustom: Bool = false) {
+        self.peerId = peerId
         if isCustom {
             self.impl = OngoingCallThreadLocalContextVideoCapturer.withExternalSampleBufferProvider()
         } else {

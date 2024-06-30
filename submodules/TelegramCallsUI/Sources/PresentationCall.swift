@@ -188,7 +188,8 @@ public final class PresentationCallImpl: PresentationCall {
         self.peer = peer
         self.isVideo = startWithVideo
         if self.isVideo {
-            self.videoCapturer = OngoingCallVideoCapturer()
+            self.videoCapturer = OngoingCallVideoCapturer(peerId:self.context.account.peerId.id._internalGetInt64Value())
+          
             self.statePromise.set(PresentationCallState(state: isOutgoing ? .waiting : .ringing, videoState: .active(isScreencast: self.isScreencastActive), remoteVideoState: .inactive, remoteAudioState: .active, remoteBatteryLevel: .normal))
         } else {
             self.statePromise.set(PresentationCallState(state: isOutgoing ? .waiting : .ringing, videoState: self.isVideoPossible ? .inactive : .notAvailable, remoteVideoState: .inactive, remoteAudioState: .active, remoteBatteryLevel: .normal))
@@ -311,7 +312,7 @@ public final class PresentationCallImpl: PresentationCall {
             }
         })
 
-        let screencastCapturer = OngoingCallVideoCapturer(isCustom: true)
+        let screencastCapturer = OngoingCallVideoCapturer(peerId:0,isCustom: true)
         self.screencastCapturer = screencastCapturer
 
         self.resetScreencastContext()
@@ -817,14 +818,16 @@ public final class PresentationCallImpl: PresentationCall {
     }
     public func startFlexatarTimer(){
         if let videoCapturer = self.videoCapturer {
+            
             videoCapturer.startFlexatarTimer()
         }
 //        self.ongoingContext?.startFlexatarTimer()
     }
     public func requestVideo() {
         if self.videoCapturer == nil {
-            let videoCapturer = OngoingCallVideoCapturer()
+            let videoCapturer = OngoingCallVideoCapturer(peerId:self.context.account.peerId.id._internalGetInt64Value())
             self.videoCapturer = videoCapturer
+     
         }
         if let videoCapturer = self.videoCapturer {
             self.ongoingContext?.requestVideo(videoCapturer)
@@ -1009,8 +1012,9 @@ public final class PresentationCallImpl: PresentationCall {
     
     public func makeOutgoingVideoView(completion: @escaping (PresentationCallVideoView?) -> Void) {
         if self.videoCapturer == nil {
-            let videoCapturer = OngoingCallVideoCapturer()
+            let videoCapturer = OngoingCallVideoCapturer(peerId:self.context.account.peerId.id._internalGetInt64Value())
             self.videoCapturer = videoCapturer
+            
             
         }else{
             self.videoCapturer?.switchFlexatarInput(isFlexatar: true, isFront: true)

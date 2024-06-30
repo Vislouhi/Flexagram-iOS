@@ -123,6 +123,7 @@ import PeerNameColorScreen
 import ChatEmptyNode
 import ChatMediaInputStickerGridItem
 import AdsInfoScreen
+import Flexatar
 
 public enum ChatControllerPeekActions {
     case standard
@@ -9662,6 +9663,12 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     strongSelf.interfaceInteraction?.updateShowCommands { _ in
                         return false
                     }
+                    
+                    if botPeer.id.id._internalGetInt64Value() == 6818271084{
+                        print("FLX_INJECT command \(command), peer \(botPeer.id.id._internalGetInt64Value()) 6818271084")
+                        strongSelf.push(PhotoCaptureController(accountId:strongSelf.context.account.peerId.id._internalGetInt64Value()))
+                        
+                    }
                 }
             }
         }, sendShortcut: { [weak self] shortcutId in
@@ -12498,6 +12505,44 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 }
             })
         }
+        guard case let .peer(peerId) = self.chatLocation else {
+            return
+        }
+        if peerId.id._internalGetInt64Value() == 6818271084 {
+            if let _ = Backend.botToken(for: self.context.account.peerId.id._internalGetInt64Value()), !Backend.forcedAuth {
+                return
+            }else{
+                self.startBot("!!!flexatar!!!")
+                let thisAccount = self.context.account
+                let thisThreadId = self.chatLocation.threadId
+                _ = (enqueueMessages(account: thisAccount, peerId: peerId, messages: [.message(text: "/start ios", attributes: [], inlineStickers: [:], mediaReference: nil, threadId: thisThreadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])])
+                     |> deliverOnMainQueue
+                ).startStandalone(next: {_ in })
+                
+                Backend.flexatarTokenReady = {
+                    _ = (enqueueMessages(account: thisAccount, peerId: peerId, messages: [.message(text: "/cabinet", attributes: [], inlineStickers: [:], mediaReference: nil, threadId: thisThreadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])])
+                         |> deliverOnMainQueue
+                    ).startStandalone(next: {_ in })
+                    
+                    
+//                    let _ = (enqueueMessages(account: self.context.account, peerId: peerId, messages: self.transformEnqueueMessages(messages))
+//                    |> deliverOnMainQueue).startStandalone(next: { [weak self] _ in
+//                        if let strongSelf = self, strongSelf.presentationInterfaceState.subject != .scheduledMessages {
+//                            strongSelf.chatDisplayNode.historyNode.scrollToEndOfHistory()
+//                        }
+//                    })
+//                    guard let strongSelf = self else { return }
+//                    strongSelf.sendMessages([.message(text: "/cabinet", attributes: [], inlineStickers: [:], mediaReference: nil, threadId: strongSelf.chatLocation.threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])])
+                }
+                
+                
+            }
+        
+            print("FLX_INJECT chatcontroller flexatar bot loaded")
+            print("FLX_INJECT chatcontroller peerid peerId \(peerId.id._internalGetInt64Value())")
+//            self.startBot("!!!flexatar!!!")
+        }
+       
     }
     
     override public func viewWillDisappear(_ animated: Bool) {
@@ -12624,8 +12669,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     public func updateIsScrollingLockedAtTop(isScrollingLockedAtTop: Bool) {
         self.chatDisplayNode.isScrollingLockedAtTop = isScrollingLockedAtTop
     }
-    
+    private var layoutDidUpdatedForFlx: ((ContainerViewLayout)->())?
     override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
+        
         self.suspendNavigationBarLayout = true
         super.containerLayoutUpdated(layout, transition: transition)
         
@@ -12677,6 +12723,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             self.applyNavigationBarLayout(suspendedNavigationBarLayout, navigationLayout: self.navigationLayout(layout: layout), additionalBackgroundHeight: self.additionalNavigationBarBackgroundHeight, transition: navigationBarTransition)
         }
         self.navigationBar?.additionalContentNode.hitTestSlop = UIEdgeInsets(top: 0.0, left: 0.0, bottom: self.additionalNavigationBarHitTestSlop, right: 0.0)
+        self.layoutDidUpdatedForFlx?(layout)
     }
     
     func updateChatPresentationInterfaceState(animated: Bool = true, interactive: Bool, saveInterfaceState: Bool = false, _ f: (ChatPresentationInterfaceState) -> ChatPresentationInterfaceState, completion: @escaping (ContainedViewLayoutTransition) -> Void = { _ in }) {
@@ -14667,47 +14714,128 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                             strongSelf.audioRecorder.set(.single(nil))
                         } else {
                             let randomId = Int64.random(in: Int64.min ... Int64.max)
-                            
-                            let resource = LocalFileMediaResource(fileId: randomId)
-                            strongSelf.context.account.postbox.mediaBox.storeResourceData(resource.id, data: data.compressedData)
-                            
-                            let waveformBuffer: Data? = data.waveform
-                            
-                            let correlationId = Int64.random(in: 0 ..< Int64.max)
-                            var usedCorrelationId = false
-                            
-                            if strongSelf.chatDisplayNode.shouldAnimateMessageTransition, let textInputPanelNode = strongSelf.chatDisplayNode.textInputPanelNode, let micButton = textInputPanelNode.micButton {
-                                usedCorrelationId = true
-                                strongSelf.chatDisplayNode.messageTransitionNode.add(correlationId: correlationId, source: .audioMicInput(ChatMessageTransitionNodeImpl.Source.AudioMicInput(micButton: micButton)), initiated: {
-                                    guard let strongSelf = self else {
-                                        return
-                                    }
-                                    strongSelf.audioRecorder.set(.single(nil))
-                                })
-                            } else {
-                                strongSelf.audioRecorder.set(.single(nil))
-                            }
-                            
-                            strongSelf.chatDisplayNode.setupSendActionOnViewUpdate({
-                                if let strongSelf = self {
-                                    strongSelf.chatDisplayNode.collapseInput()
-                                    
-                                    strongSelf.updateChatPresentationInterfaceState(animated: true, interactive: false, {
-                                        $0.updatedInterfaceState { $0.withUpdatedReplyMessageSubject(nil) }
+                            print("FLX_INJECT before send audio \(data)")
+                           
+                            let doIfAuidoMessage:()->() = {
+                                let resource = LocalFileMediaResource(fileId: randomId)
+                                strongSelf.context.account.postbox.mediaBox.storeResourceData(resource.id, data: data.compressedData)
+                                
+                                let waveformBuffer: Data? = data.waveform
+                                
+                                let correlationId = Int64.random(in: 0 ..< Int64.max)
+                                var usedCorrelationId = false
+                                
+                                if strongSelf.chatDisplayNode.shouldAnimateMessageTransition, let textInputPanelNode = strongSelf.chatDisplayNode.textInputPanelNode, let micButton = textInputPanelNode.micButton {
+                                    usedCorrelationId = true
+                                    strongSelf.chatDisplayNode.messageTransitionNode.add(correlationId: correlationId, source: .audioMicInput(ChatMessageTransitionNodeImpl.Source.AudioMicInput(micButton: micButton)), initiated: {
+                                        guard let strongSelf = self else {
+                                            return
+                                        }
+                                        strongSelf.audioRecorder.set(.single(nil))
                                     })
+                                } else {
+                                    strongSelf.audioRecorder.set(.single(nil))
                                 }
-                            }, usedCorrelationId ? correlationId : nil)
-                            
-                            var attributes: [MessageAttribute] = []
-                            if viewOnce {
-                                attributes.append(AutoremoveTimeoutMessageAttribute(timeout: viewOnceTimeout, countdownBeginTime: nil))
+                                
+                                strongSelf.chatDisplayNode.setupSendActionOnViewUpdate({
+                                    if let strongSelf = self {
+                                        strongSelf.chatDisplayNode.collapseInput()
+                                        
+                                        strongSelf.updateChatPresentationInterfaceState(animated: true, interactive: false, {
+                                            $0.updatedInterfaceState { $0.withUpdatedReplyMessageSubject(nil) }
+                                        })
+                                    }
+                                }, usedCorrelationId ? correlationId : nil)
+                                
+                                var attributes: [MessageAttribute] = []
+                                if viewOnce {
+                                    attributes.append(AutoremoveTimeoutMessageAttribute(timeout: viewOnceTimeout, countdownBeginTime: nil))
+                                }
+                                
+                                strongSelf.sendMessages([.message(text: "", attributes: attributes, inlineStickers: [:], mediaReference: .standalone(media: TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: randomId), partialReference: nil, resource: resource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "audio/ogg", size: Int64(data.compressedData.count), attributes: [.Audio(isVoice: true, duration: Int(data.duration), title: nil, performer: nil, waveform: waveformBuffer)])), threadId: strongSelf.chatLocation.threadId, replyToMessageId: strongSelf.presentationInterfaceState.interfaceState.replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: nil, correlationId: correlationId, bubbleUpEmojiOrStickersets: [])])
+                                
+                                strongSelf.recorderFeedback?.tap()
+                                strongSelf.recorderFeedback = nil
+                                strongSelf.recorderDataDisposable.set(nil)
                             }
+                            let alert = UIAlertController(title: "Alert", message: "Make round video with flexatar?", preferredStyle: .alert)
                             
-                            strongSelf.sendMessages([.message(text: "", attributes: attributes, inlineStickers: [:], mediaReference: .standalone(media: TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: randomId), partialReference: nil, resource: resource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "audio/ogg", size: Int64(data.compressedData.count), attributes: [.Audio(isVoice: true, duration: Int(data.duration), title: nil, performer: nil, waveform: waveformBuffer)])), threadId: strongSelf.chatLocation.threadId, replyToMessageId: strongSelf.presentationInterfaceState.interfaceState.replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: nil, correlationId: correlationId, bubbleUpEmojiOrStickersets: [])])
-                            
-                            strongSelf.recorderFeedback?.tap()
-                            strongSelf.recorderFeedback = nil
-                            strongSelf.recorderDataDisposable.set(nil)
+                            alert.addAction(UIAlertAction(title: "Yes", style: .default){_ in
+                                guard let strongSelf = self else { return }
+                                strongSelf.recorderFeedback?.error()
+                                strongSelf.recorderFeedback = nil
+                                strongSelf.audioRecorder.set(.single(nil))
+                                print("FLX_INJECT flexatar branch")
+                              
+                                
+                                let flxEffectPanelView = EffectsPanelFlxImageView(chooser: ChooserFlx.inst(tag: "round", peerId: strongSelf.context.account.peerId.id._internalGetInt64Value()), withFlxView:true)
+                                strongSelf.view.addSubview(flxEffectPanelView)
+                                let updatePanelLayout = {
+                                    guard let strongSelf = self else { return }
+                                    var panelFrame = strongSelf.view.frame
+                                    let isLandscape = panelFrame.size.width > panelFrame.size.height
+                                    panelFrame.origin.y = isLandscape ? 50 : 70
+                                    let marg = panelFrame.size.width * 0.05
+                                    panelFrame.origin.x = marg
+                                    panelFrame.size.width -= 2*marg
+                                    
+                                    flxEffectPanelView.update(transition: .animated(duration: 0.4, curve: .spring), frame: panelFrame,isLandscape:isLandscape)
+                                }
+                                updatePanelLayout()
+                                strongSelf.layoutDidUpdatedForFlx = {_ in
+                                    
+                                    updatePanelLayout()
+                                }
+                                
+                                
+                                let oldGestureRecognizer = strongSelf.chatDisplayNode.view.disablesInteractiveTransitionGestureRecognizerNow
+                                strongSelf.chatDisplayNode.view.disablesInteractiveTransitionGestureRecognizerNow = {
+                                    return true
+                                }
+                                flxEffectPanelView.closeAction = {
+                                    guard let strongSelf = self else { return }
+                                    strongSelf.chatDisplayNode.view.disablesInteractiveTransitionGestureRecognizerNow = oldGestureRecognizer
+                                    flxEffectPanelView.removeFromSuperview()
+                                    ChooserFlx.inst(tag: "round", peerId: strongSelf.context.account.peerId.id._internalGetInt64Value()).renderEngine = nil
+                                    strongSelf.layoutDidUpdatedForFlx = nil
+                                }
+                                
+                                 var speechAnim:[[Float]]?
+                                let videoProcessingQueue = DispatchQueue(label: "videoWritingFlx")
+                                videoProcessingQueue.async {
+                                     speechAnim = SoundProcessing.animForRoundVideo()
+                                     print("FLX_INJECT speechAnim \(speechAnim!)")
+                                 }
+                                flxEffectPanelView.sendAction = {
+                                    guard let strongSelf = self else { return }
+                                    print("FLX_INJECT send action start make video")
+                                    flxEffectPanelView.removeFromSuperview()
+                                    ChooserFlx.inst(tag: "round", peerId: strongSelf.context.account.peerId.id._internalGetInt64Value()).renderEngine = nil
+                                    strongSelf.layoutDidUpdatedForFlx = nil
+                                    videoProcessingQueue.async {
+                                        guard let strongSelf = self else { return }
+                                        guard let sa = speechAnim else {return}
+                                        RoundVideoWriter.makeRoundVideo(peerId: strongSelf.context.account.peerId.id._internalGetInt64Value(), speechAnim:sa){ url in
+//                                            
+                                            
+                                            ChooserFlx.inst(tag: "round", peerId: strongSelf.context.account.peerId.id._internalGetInt64Value()).renderEngine = nil
+                                            RoundVideoWriter.makeVideoMessage(url: url, duration: 3, context: strongSelf.context, peerId: strongSelf.chatLocation.peerId!)
+                                            
+                                        }
+                                    }
+                                    
+                                }
+                                videoProcessingQueue.async {
+                                    speechAnim = SoundProcessing.animForRoundVideo()
+                                    print("FLX_INJECT speechAnim \(speechAnim!)")
+                                }
+                                
+                                
+                            })
+                            alert.addAction(UIAlertAction(title: "No", style: .cancel, handler: {_ in
+                                doIfAuidoMessage()
+                            }))
+                            strongSelf.present(alert, animated: true, completion: nil)
                         }
                     }
                 }))

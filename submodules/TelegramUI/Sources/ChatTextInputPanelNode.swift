@@ -979,6 +979,7 @@ class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDelegate, Ch
         }
         self.actionButtons.micButton.endRecording = { [weak self] sendMedia in
             if let strongSelf = self, let interfaceState = strongSelf.presentationInterfaceState, let interfaceInteraction = strongSelf.interfaceInteraction {
+                print("FLX_INJECT end audio record \(sendMedia)")
                 if let _ = interfaceState.inputTextPanelState.mediaRecordingState {
                     if sendMedia {
                         interfaceInteraction.finishMediaRecording(.send(viewOnce: strongSelf.viewOnce))

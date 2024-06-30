@@ -129,6 +129,7 @@ public class InteractiveTransitionGestureRecognizer: UIPanGestureRecognizer {
     }
     
     override public func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+//        print("FLX_INJECT touchesMoved")
         let location = touches.first!.location(in: self.view)
         let translation = CGPoint(x: location.x - self.firstLocation.x, y: location.y - self.firstLocation.y)
         

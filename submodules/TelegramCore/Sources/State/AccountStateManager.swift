@@ -704,6 +704,7 @@ public final class AccountStateManager {
             }
             operation.isRunning = true
             let currentValidityMarker = self.currentValidityMarker
+//            print("FLX_INJECT received messages \(operation.content)")
             switch operation.content {
             case let .pollDifference(_, currentEvents):
                 self.operationTimer?.invalidate()
@@ -998,6 +999,7 @@ public final class AccountStateManager {
                     completed()
                 })
             case let .processEvents(operationId, events):
+//                print("FLX_INJECT received messages \(events)")
                 self.operationTimer?.invalidate()
                 let completed: () -> Void = { [weak self] in
                     if let strongSelf = self {
@@ -1080,6 +1082,10 @@ public final class AccountStateManager {
                         let (messages, notify, _, _, threadData) = messagesForNotification(transaction: transaction, id: id, alwaysReturnMessage: false)
                         if !messages.isEmpty {
                             messageList.append((messages, .root, notify, threadData))
+//                            for m in messages{
+//                                print("FLX_INJECT received messages \(m.text) , \(m.peers)")
+//                            }
+                           
                         }
                     }
                     var wasScheduledMessages: [Message] = []

@@ -10,6 +10,8 @@ import Metal
 import MetalKit
 public class MetalResProviderFlx{
     public static var indexCount = 0
+    public static var vtxBufferOfset = 0
+    public static var keyUv = SIMD3<Float>(0,0,1)
     public static func getFileUrl(name:String)->URL{
    
         let mainBundle = Bundle(for: MetalResProviderFlx.self)
@@ -39,7 +41,12 @@ public class MetalResProviderFlx{
     
     public static func faceUvBuffer(device:MTLDevice)->MTLBuffer?{
         if let buffer = try? Data(contentsOf: getFileUrl(name: "FLX_mesh_uv")){
-           
+            vtxBufferOfset = buffer.count
+            let keyIdx = 50
+            let startIdx = keyIdx*4*2;
+            let keyUV = buffer.subdata(in: startIdx..<startIdx+8).toFloatArray()
+            keyUv.x = keyUV[0]
+            keyUv.y = keyUV[1]
             return makeMTLBuffer(device: device, buffer: buffer)
         }
         return nil

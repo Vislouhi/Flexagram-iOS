@@ -23,6 +23,7 @@ swift_library(
         "//submodules/Utils/RangeSet:RangeSet",
         "//submodules/Utils/DarwinDirStat",
         "//submodules/Emoji",
+        #"//submodules/Flexatar:Flexatar",
     ],
     visibility = [
         "//visibility:public",

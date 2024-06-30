@@ -663,7 +663,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                                     updateLayoutImpl?(layout, navigationBarHeight)
                                 })
                                 
-                                let controller = VoiceChatCameraPreviewController(sharedContext: strongSelf.sharedContext, cameraNode: outgoingVideoNode, shareCamera: { _, _ in
+                                let controller = VoiceChatCameraPreviewController(peerId:strongSelf.call.context.account.peerId.id._internalGetInt64Value(),sharedContext: strongSelf.sharedContext, cameraNode: outgoingVideoNode, shareCamera: { _, _ in
                                     proceed()
                                 }, switchCamera: { [weak self] in
                                     Queue.mainQueue().after(0.1) {

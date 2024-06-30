@@ -119,6 +119,33 @@ public class SoundProcessing{
         //        let convertedAudioSignal = pcmBuffer.asData()
 //        print(convertedAudioSignal.toFloatArray())
     }
+    public static func convertToFloat16000CustomLength(_ data:Data) ->Data?{
+//        print("FLX_INJECT input data size:",data.count)
+        let frameCount = data.count / 2
+        let sampleRate = 48000
+        if (voiceInputFormat48 == nil){
+            voiceInputFormat48 = AVAudioFormat( commonFormat: .pcmFormatInt16,
+                                                sampleRate: Double(sampleRate),
+                                                channels: 1,
+                                                interleaved: false)
+            formatConverterTransmitToFloat =  AVAudioConverter(from:voiceInputFormat48!, to: voiceProcessinFormat)
+        }
+//        print(sampleRate)
+        
+        let bufferSizeConverted = AVAudioFrameCount(frameCount * 16 / 48)
+        
+        guard let pcmBufferTransmit = AVAudioPCMBuffer(data: data, format: voiceInputFormat48!) else {return nil}
+        guard let pcmBuffer = AVAudioPCMBuffer(pcmFormat: self.voiceProcessinFormat, frameCapacity: bufferSizeConverted)else{return nil}
+        let inputBlock: AVAudioConverterInputBlock = {inNumPackets, outStatus in
+            outStatus.pointee = AVAudioConverterInputStatus.haveData
+            return pcmBufferTransmit
+        }
+        var error: NSError? = nil
+        formatConverterTransmitToFloat?.convert(to: pcmBuffer, error: &error, withInputFrom: inputBlock)
+        return pcmBuffer.asData()
+        //        let convertedAudioSignal = pcmBuffer.asData()
+//        print(convertedAudioSignal.toFloatArray())
+    }
     public static var audiPacketsCollector:[Data] = []
     public static func collectPackets(_ data :Data)->Data?{
         audiPacketsCollector.append(data)
@@ -138,6 +165,40 @@ public class SoundProcessing{
     public static let nnQueue =  DispatchQueue(label: "nnProc",qos:.userInitiated)
     private static var soundQueueFree = true
     private static var nnQueueFree = true
+    
+    private static func splitData(data: Data, partSize: Int) -> [Data] {
+        // Ensure partSize is positive
+        guard partSize > 0 else { return [] }
+        
+        var result = [Data]()
+        var startIndex = 0
+        
+        while startIndex < data.count {
+            let endIndex = min(startIndex + partSize, data.count)
+            let subData = data.subdata(in: startIndex..<endIndex)
+            result.append(subData)
+            startIndex += partSize
+        }
+        
+        return result
+    }
+
+    public static func animForRoundVideo()->[[Float]]{
+        let fileName = "flx_auido.bin"
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let fileURL = tempDirectory.appendingPathComponent(fileName)
+        if var data = try? Data(contentsOf: fileURL){
+            data += Data(repeating: 0, count: 48000/2*4)
+            if let audioPacket = convertToFloat16000CustomLength(data){
+                
+                let packets = splitData(data: audioPacket, partSize: 800 * 4)
+                AnimationNN.loadModels()
+                AnimationNN.reset()
+                return Array((packets.map{AnimationNN.submitAudioPacket(data: $0)}).dropFirst(10))
+            }
+        }
+        return []
+    }
     public static func makeAnimVector(_ data :Data){
         let data1 = Data(data)
         if soundQueueFree {

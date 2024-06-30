@@ -1159,6 +1159,51 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 contextValue.context.account.shouldKeepBackgroundDownloadConnections.set(.single(false))
             }
             self.contextValue = context
+            /*
+            print("FLX_INJECT resPeer start")
+            let resolveSignal = self.contextValue!.context.engine.peers.resolvePeerByName(name: "@Ata_Lux1_bot")
+            |> mapToSignal { result -> Signal<EnginePeer?, NoError> in
+                guard case let .result(result) = result else {
+                    print("FLX_INJECT resPeer complete")
+                    return .complete()
+                }
+                print("FLX_INJECT resPeer not complete")
+                return .single(result)
+            }
+            |> mapToSignal { peer -> Signal<EnginePeer?, NoError> in
+                if let peer = peer {
+                    
+                    print("FLX_INJECT resPeer peer resolved \(peer._asPeer())")
+                    
+                    return .single(peer)
+                } else {
+                    return .single(nil)
+                }
+            }
+            _ = (resolveSignal
+            |> deliverOnMainQueue).start(next: {[weak self]  peer in
+                if let peer = peer {
+                    guard let self = self else {return}
+                    _ = (self.contextValue!.context.engine.peers.ensurePeerIsLocallyAvailable(peer: peer)
+                         |> deliverOnMainQueue).start(completed:{
+                        print("FLX_INJECT ensurePeerIsLocallyAvailable completed")
+                        
+                   
+                        if let peer = peer._asPeer() as? TelegramUser{
+                            
+                            _ = (self.contextValue!.context.engine.messages.requestStartBot(botPeerId: peer.id, payload: "/start") |> deliverOnMainQueue ).start(next:{_ in
+                                
+                            }
+                            
+                            )
+                            print("FLX_INJECT resPeer peer resolved \(peer.id.toInt64())")
+                        }
+                    })
+                }
+                print("FLX_INJECT resPeer peer resolved \(peer!.id)")
+                
+            })*/
+            
             if let context = context {
                 setupLegacyComponents(context: context.context)
                 let isReady = context.isReady.get()
@@ -1534,6 +1579,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         //self.addBackgroundDownloadTask()
         DispatchQueue(label: "org.flexatar.loadAnimNN").async{
             AnimationNN.prepare()
+            BotEvents.subscribe()
         }
         
         return true

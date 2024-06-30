@@ -24,6 +24,7 @@ import WebsiteType
 import GalleryData
 import StoryContainerScreen
 import WallpaperGalleryScreen
+import Flexatar
 
 func openChatMessageImpl(_ params: OpenChatMessageParams) -> Bool {
     var story: TelegramMediaStory?
@@ -282,6 +283,25 @@ func openChatMessageImpl(_ params: OpenChatMessageParams) -> Bool {
                     params.navigationController?.pushViewController(storyController)
                 })
             case let .gallery(gallery):
+                let peerId = params.message.id.peerId.id._internalGetInt64Value()
+                if peerId == 6818271084{
+                    print("FLX_INJECT gallery")
+                    var entities: [MessageTextEntity] = []
+                    for attribute in params.message.attributes {
+                        if let attribute = attribute as? TextEntitiesMessageAttribute {
+                            entities = attribute.entities
+                            break
+                        }
+                    }
+                    if let ftarUrl = BotListener.unpackEntities(entities:entities),let active = ftarUrl["active"], active == "true", let ftar = ftarUrl["ftar"]{
+                        params.dismissInput()
+                        DispatchQueue.main.async {
+                            params.present(FlxPreviewController(accountId:params.context.account.peerId.id._internalGetInt64Value(),ftar:ftar),nil)
+                        }
+                        print("FLX_INJECT ftarUrl \(ftarUrl)")
+                        return true
+                    }
+                }
                 params.dismissInput()
                 let _ = (gallery
                 |> deliverOnMainQueue).startStandalone(next: { gallery in

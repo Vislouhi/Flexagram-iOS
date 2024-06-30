@@ -1126,7 +1126,7 @@ public final class PresentationGroupCallImpl: PresentationGroupCall {
         let basePath = self.accountContext.sharedContext.basePath + "/broadcast-coordination"
         let screencastBufferServerContext = IpcGroupCallBufferAppContext(basePath: basePath)
         self.screencastBufferServerContext = screencastBufferServerContext
-        let screencastCapturer = OngoingCallVideoCapturer(isCustom: true)
+        let screencastCapturer = OngoingCallVideoCapturer(peerId:0,isCustom: true)
         self.screencastCapturer = screencastCapturer
         self.screencastFramesDisposable = (screencastBufferServerContext.frames
         |> deliverOnMainQueue).start(next: { [weak screencastCapturer] screencastFrame in
@@ -2778,7 +2778,7 @@ public final class PresentationGroupCallImpl: PresentationGroupCall {
     
     public func makeOutgoingVideoView(requestClone: Bool, completion: @escaping (PresentationCallVideoView?, PresentationCallVideoView?) -> Void) {
         if self.videoCapturer == nil {
-            let videoCapturer = OngoingCallVideoCapturer()
+            let videoCapturer = OngoingCallVideoCapturer(peerId: self.accountContext.account.peerId.id._internalGetInt64Value())
             self.videoCapturer = videoCapturer
         }
 
@@ -2920,7 +2920,7 @@ public final class PresentationGroupCallImpl: PresentationGroupCall {
     
     public func requestVideo() {
         if self.videoCapturer == nil {
-            let videoCapturer = OngoingCallVideoCapturer()
+            let videoCapturer = OngoingCallVideoCapturer(peerId:self.accountContext.account.peerId.id._internalGetInt64Value())
             self.videoCapturer = videoCapturer
         }
 

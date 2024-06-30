@@ -112,8 +112,8 @@ final class VoiceChatMainStageNode: ASDisplayNode {
     private let backButtonNode: HighlightableButtonNode
     private let backButtonArrowNode: ASImageNode
     private let pinButtonNode: VoiceChatPinButtonNode
-    private let flxButtonNode: ImageButtonFlxNode
-    private let flxEffectPanelNode: EffectsPanelFlxNode
+    public let flxButtonNode: ImageButtonFlxNode
+//    private let flxEffectPanelNode: EffectsPanelFlxNode
     
     private let audioLevelNode: VoiceChatBlobNode
     private let audioLevelDisposable = MetaDisposable()
@@ -217,8 +217,8 @@ final class VoiceChatMainStageNode: ASDisplayNode {
         self.flxButtonNode = ImageButtonFlxNode()
         self.flxButtonNode.image = UIImage(bundleImageName: "Flexatar/ColoredLogo")
         
-        self.flxEffectPanelNode = EffectsPanelFlxNode()
-        self.flxEffectPanelNode.isHidden = true
+//        self.flxEffectPanelNode = EffectsPanelFlxNode()
+//        self.flxEffectPanelNode.isHidden = true
 //        self.flxButtonNode.image =  generateTintedImage(image: UIImage(bundleImageName:  "Call/ScreenShareTablet" ), color: .white)
         
         self.backdropAvatarNode = ImageNode()
@@ -272,18 +272,21 @@ final class VoiceChatMainStageNode: ASDisplayNode {
         
         super.init()
         
-        self.flxButtonNode.pressed = {[weak self] in
-            if let stronSelf = self{
-                stronSelf.flxEffectPanelNode.isHidden = false
-                print("FLX_INJECT flexatar image button pressed")
-            }
-            
-        }
-        self.flxEffectPanelNode.closeAction = {[weak self] in
-            if let stronSelf = self{
-                stronSelf.flxEffectPanelNode.isHidden = true
-            }
-        }
+//        self.flxButtonNode.pressed = {[weak self] in
+//            
+//            if let stronSelf = self{
+//                stronSelf.
+//          stronSelf.flxEffectPanelNode.isHidden = false
+//                print("FLX_INJECT flexatar image button pressed")
+//            }
+//            
+//        }
+//        self.flxEffectPanelNode.closeAction = {[weak self] in
+//            if let stronSelf = self{
+//                stronSelf.flxEffectPanelNode.isHidden = true
+//                print("FLX_INJECT close panel button pressed")
+//            }
+//        }
         self.clipsToBounds = true
         self.cornerRadius = backgroundCornerRadius
         
@@ -326,7 +329,7 @@ final class VoiceChatMainStageNode: ASDisplayNode {
         self.speakingContainerNode.addSubnode(self.speakingAvatarNode)
         self.speakingContainerNode.addSubnode(self.speakingTitleNode)
         
-        self.addSubnode(self.flxEffectPanelNode)
+//        self.addSubnode(self.flxEffectPanelNode)
 
         self.backButtonNode.setTitle(presentationData.strings.Common_Back, with: Font.regular(17.0), with: .white, for: [])
         self.backButtonNode.hitTestSlop = UIEdgeInsets(top: -8.0, left: -20.0, bottom: -8.0, right: -8.0)
@@ -1208,18 +1211,18 @@ final class VoiceChatMainStageNode: ASDisplayNode {
             transition.updateFrame(node: self.placeholderIconNode, frame: CGRect(origin: CGPoint(x: floor((size.width - imageSize.width) / 2.0), y: floorToScreenPixels(size.height / 2.0) - imageSize.height - 8.0), size: imageSize))
         }
 
-        let panelX:CGFloat
-        let panelWidth:CGFloat
-        if isLandscape{
-            panelX = size.width * 0.15
-            panelWidth = size.width * 0.7
-        }else{
-            panelX = size.width * 0.05
-            panelWidth = size.width * 0.9
-        }
-        var panelRect = CGRect(origin: CGPoint(x:panelX,y: 64.0 ), size: CGSize(width: panelWidth, height: 100.0))
-        panelRect.size.height = self.flxEffectPanelNode.update(frame: panelRect, isLandscape: isLandscape, transition: transition)
-        transition.updateFrame(node: self.flxEffectPanelNode, frame: panelRect)
+//        let panelX:CGFloat
+//        let panelWidth:CGFloat
+//        if isLandscape{
+//            panelX = size.width * 0.15
+//            panelWidth = size.width * 0.7
+//        }else{
+//            panelX = size.width * 0.05
+//            panelWidth = size.width * 0.9
+//        }
+//        var panelRect = CGRect(origin: CGPoint(x:panelX,y: 64.0 ), size: CGSize(width: panelWidth, height: 100.0))
+//        panelRect.size.height = self.flxEffectPanelNode.update(frame: panelRect, isLandscape: isLandscape, transition: transition)
+//        transition.updateFrame(node: self.flxEffectPanelNode, frame: panelRect)
         
     }
     

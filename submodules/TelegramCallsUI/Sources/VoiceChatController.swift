@@ -963,6 +963,8 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
 
         private var statsDisposable: Disposable?
         
+        private let flxEffectPanelNode: EffectsPanelFlxNode
+        
         init(controller: VoiceChatControllerImpl, sharedContext: SharedAccountContext, call: PresentationGroupCall) {
             self.controller = controller
             self.sharedContext = sharedContext
@@ -1148,6 +1150,10 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
             
             self.participantsNode = VoiceChatTimerNode(strings: self.presentationData.strings, dateTimeFormat: self.presentationData.dateTimeFormat)
             
+//            print("FLX_INJECT peerID1 \(self.context.account.peerId.toInt64())")
+//            print("FLX_INJECT peerID2 \(self.context.account.peerId.id._internalGetInt64Value())")
+            self.flxEffectPanelNode = EffectsPanelFlxNode(chooser: ChooserFlx.inst(tag:"call",peerId:self.context.account.peerId.id._internalGetInt64Value()))
+//            self.flxEffectPanelNode.context = self.context
             super.init()
             
             let context = self.context
@@ -1871,10 +1877,34 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
             self.contentContainer.addSubnode(self.timerNode)
             self.contentContainer.addSubnode(self.scheduleTextNode)
             self.contentContainer.addSubnode(self.fullscreenListContainer)
+            self.contentContainer.addSubnode(self.flxEffectPanelNode)
+            
             self.fullscreenListContainer.addSubnode(self.fullscreenListNode)
             
             self.mainStageContainerNode.addSubnode(self.mainStageBackgroundNode)
             self.mainStageContainerNode.addSubnode(self.mainStageNode)
+            
+            
+            
+            self.flxEffectPanelNode.isHidden = true
+            self.flxEffectPanelNode.isUserInteractionEnabled = true
+            self.flxEffectPanelNode.closeAction = {[weak self] in
+                if let stronSelf = self{
+                    stronSelf.flxEffectPanelNode.isHidden = true
+                    print("FLX_INJECT close panel button pressed")
+                }
+            }
+            self.mainStageNode.flxButtonNode.pressed = {[weak self] in
+    
+                if let stronSelf = self{
+                    
+                    stronSelf.flxEffectPanelNode.isHidden = false
+                    
+                    stronSelf.flxEffectPanelNode.subscribeStoargeObserver()
+                    print("FLX_INJECT flexatar image button pressed")
+                }
+    
+            }
             
             self.updateDecorationsColors()
                         
@@ -3719,13 +3749,14 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
                         return
                     }
                     let isFrontCamera = true
-                    let videoCapturer = OngoingCallVideoCapturer()
+                    let videoCapturer = OngoingCallVideoCapturer(peerId:strongSelf.context.account.peerId.id._internalGetInt64Value())
+                  
                     let input = videoCapturer.video()
                     if let videoView = strongSelf.videoRenderingContext.makeView(input: input, blur: false) {
                         videoView.updateIsEnabled(true)
                         
                         let cameraNode = GroupVideoNode(videoView: videoView, backdropVideoView: nil)
-                        let controller = VoiceChatCameraPreviewController(sharedContext: strongSelf.context.sharedContext, cameraNode: cameraNode, shareCamera: { [weak self] _, unmuted in
+                        let controller = VoiceChatCameraPreviewController(peerId:strongSelf.context.account.peerId.id._internalGetInt64Value(),sharedContext: strongSelf.context.sharedContext, cameraNode: cameraNode, shareCamera: { [weak self] _, unmuted in
                             if let strongSelf = self {
                                 strongSelf.call.setIsMuted(action: unmuted ? .unmuted : .muted(isPushToTalkActive: false))
                                 
@@ -3763,6 +3794,7 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
                         },stopFlexatar:{
                             FrameProvider.invalidateFlexatarDrawTimer()
                         })
+                   
                         strongSelf.controller?.present(controller, in: .window(.root))
                     }
                 })
@@ -3971,6 +4003,24 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
                 transition.updateFrame(node: self.mainStageNode, frame: videoFrame)
             }
             self.mainStageNode.update(size: videoFrame.size, sideInset: layout.safeInsets.left, bottomInset: self.isLandscape ? 0.0 : bottomInset, isLandscape: videoFrame.width > videoFrame.height, isTablet: isTablet, transition: transition)
+            
+            let panelX:CGFloat
+            let panelWidth:CGFloat
+            if isLandscape{
+                panelX = videoFrame.size.width * 0.15
+                panelWidth = videoFrame.size.width * 0.7
+            }else{
+                panelX = videoFrame.size.width * 0.05
+                panelWidth = videoFrame.size.width * 0.9
+            }
+            var panelRect = CGRect(origin: CGPoint(x:panelX,y: 64.0 ), size: CGSize(width: panelWidth, height: 100.0))
+//            var panelRect = CGRect(origin: CGPoint(), size: CGSize(width: videoFrame.width, height: 100.0))
+
+//            let _ = self.flxEffectPanelNode.update(frame: panelRect, isLandscape: isLandscape, transition: transition)
+            let effectPanelHeight = self.flxEffectPanelNode.update(frame: panelRect, isLandscape: isLandscape, transition: transition)
+//            panelRect.size.height = 500
+            panelRect.size.height = effectPanelHeight
+            transition.updateFrame(node: self.flxEffectPanelNode, frame: panelRect)
             
             let backgroundFrame = CGRect(origin: CGPoint(x: 0.0, y: topPanelFrame.maxY), size: CGSize(width: size.width, height: layout.size.height))
             
@@ -6764,6 +6814,7 @@ public final class VoiceChatControllerImpl: ViewController, VoiceChatController 
                             strongSelf.mainStageNode.setControlsHidden(false, animated: false)
                             strongSelf.fullscreenListContainer.isHidden = true
                             strongSelf.mainStageContainerNode.isHidden = true
+                            strongSelf.flxEffectPanelNode.isHidden = true
                             strongSelf.mainStageContainerNode.addSubnode(strongSelf.mainStageNode)
                             
                             var bounds = strongSelf.mainStageContainerNode.bounds

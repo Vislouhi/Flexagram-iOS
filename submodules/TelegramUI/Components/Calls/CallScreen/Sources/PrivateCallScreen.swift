@@ -9,6 +9,7 @@ import SwiftSignalKit
 import UIKitRuntimeUtils
 import TelegramPresentationData
 import Flexatar
+import AccountContext
 
 public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictureControllerDelegate {
     public struct State: Equatable {
@@ -236,8 +237,10 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
     private var pipController: AVPictureInPictureController?
     
     private var snowEffectView: SnowEffectView?
+    public var context:AccountContext?
     
-    public override init(frame: CGRect) {
+    
+    public init(context:AccountContext,frame: CGRect) {
         self.overlayContentsView = UIView()
         self.overlayContentsView.isUserInteractionEnabled = false
         
@@ -262,7 +265,8 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
         
         self.backButtonView = BackButtonView(frame: CGRect())
         self.flxButtonView = ImageButtonFlxView(frame: CGRect(),image: UIImage(bundleImageName: "Flexatar/ColoredLogo"))
-        self.flxEffectPanelView = EffectsPanelFlxImageView()
+        self.flxEffectPanelView = EffectsPanelFlxImageView(chooser: ChooserFlx.inst(tag: "call", peerId: context.account.peerId.id._internalGetInt64Value()))
+//        self.flxEffectPanelView.context = self.context
         self.flxEffectPanelView.isHidden = true
         
         self.pipView = PrivateCallPictureInPictureView(frame: CGRect(origin: CGPoint(), size: CGSize()))
@@ -320,12 +324,19 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
         
         self.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.tapGesture(_:))))
         
-        self.flxButtonView.pressed = {
+        self.flxButtonView.pressed = {[weak self] in
+            guard let self else {
+                return
+            }
             print("FLX_INJECT flx effect punel button pressed")
             self.flxEffectPanelView.isHidden = false
+            self.flxEffectPanelView.subscribeStoargeObserver()
         }
         
-        self.flxEffectPanelView.closeAction = {
+        self.flxEffectPanelView.closeAction = {[weak self] in
+            guard let self else {
+                return
+            }
             print("FLX_INJECT flx effect punel close button pressed")
             self.flxEffectPanelView.isHidden = true
         }

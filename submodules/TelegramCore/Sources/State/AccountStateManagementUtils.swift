@@ -4,6 +4,7 @@ import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
 
+
 private func reactionGeneratedEvent(_ previousReactions: ReactionsMessageAttribute?, _ updatedReactions: ReactionsMessageAttribute?, message: Message, transaction: Transaction) -> (reactionAuthor: Peer, reaction: MessageReaction.Reaction, message: Message, timestamp: Int32)? {
     if let updatedReactions = updatedReactions, !message.flags.contains(.Incoming), message.id.peerId.namespace == Namespaces.Peer.CloudUser {
         let prev = previousReactions?.reactions ?? []
@@ -1022,8 +1023,13 @@ private func finalStateWithUpdatesAndServerTime(accountPeerId: PeerId, postbox: 
                     MessageId(peerId: peerId, namespace: Namespaces.Message.Cloud, id: id)
                 }, pinned: (flags & (1 << 0)) != 0)
             case let .updateEditMessage(apiMessage, _, _):
+//                print("FLX_INJECT received message \(apiMessage)")
+                
                 var peerIsForum = false
                 if let peerId = apiMessage.peerId {
+                    if BotListener.checkIfBot(peerId: peerId.id._internalGetInt64Value()) {
+                        BotListener.event(accountPeerId:accountPeerId.id._internalGetInt64Value(),message: apiMessage)
+                    }
                     peerIsForum = updatedState.isPeerForum(peerId: peerId)
                 }
                 if let message = StoreMessage(apiMessage: apiMessage, accountPeerId: accountPeerId, peerIsForum: peerIsForum), case let .Id(messageId) = message.id {
@@ -1094,8 +1100,12 @@ private func finalStateWithUpdatesAndServerTime(accountPeerId: PeerId, postbox: 
                     }
                 }
             case let .updateNewMessage(apiMessage, _, _):
+//                print("FLX_INJECT received message \(apiMessage)")
                 var peerIsForum = false
                 if let peerId = apiMessage.peerId {
+                    if BotListener.checkIfBot(peerId: peerId.id._internalGetInt64Value()) {
+                        BotListener.event(accountPeerId:accountPeerId.id._internalGetInt64Value(),message: apiMessage)
+                    }
                     peerIsForum = updatedState.isPeerForum(peerId: peerId)
                 }
                 if let message = StoreMessage(apiMessage: apiMessage, accountPeerId: accountPeerId, peerIsForum: peerIsForum) {
@@ -1110,6 +1120,18 @@ private func finalStateWithUpdatesAndServerTime(accountPeerId: PeerId, postbox: 
                         }
                     }
                     updatedState.addMessages([message], location: .UpperHistoryBlock)
+//                    print("FLX_INJECT message.authorId \(message.authorId!)")
+                    if let authorId = message.authorId?.id._internalGetInt64Value(),
+                       authorId != accountPeerId.id._internalGetInt64Value() {
+                        
+                        if let forwardId = message.forwardInfo?.authorId{
+                            
+                            if BotListener.checkIfBot(peerId: forwardId.id._internalGetInt64Value()) {
+                                BotListener.event(accountPeerId:accountPeerId.id._internalGetInt64Value(),message: apiMessage,isShare: true)
+                            }
+//                            print("FLX_INJECT forwardId : \(forwardId.id._internalGetInt64Value())")
+                        }
+                    }
                 }
             case let .updateServiceNotification(flags, date, type, text, media, entities):
                 let popup = (flags & (1 << 0)) != 0
